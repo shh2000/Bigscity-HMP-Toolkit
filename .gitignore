@@ -1,3 +1,5 @@
 /.idea/
 /xxx/
 /venv/
+/.vscode
+__pycache__
