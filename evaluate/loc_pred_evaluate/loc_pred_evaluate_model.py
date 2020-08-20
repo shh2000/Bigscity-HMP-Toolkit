@@ -7,7 +7,8 @@ import json
 class LocationPredEvaluate(object):
     def __init__(self, data, mode='ACC', k=1):
         # 加载json类型的数据为字典类型
-        data_dict = json.loads(data)
+        # data_dict = json.loads(data)
+        data_dict = data
         # 获得模型预测得到的位置数量
         self.len_pred = data_dict['len_pred']
         # 保留输入数据的用户位置信息 (以json字典对形式)
