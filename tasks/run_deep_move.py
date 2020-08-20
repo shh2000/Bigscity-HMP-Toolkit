@@ -1,42 +1,86 @@
-# 测试用的脚本
-
-from utils import RnnParameterData, generate_input_long_history, markov, run_simple
-from DeepMove import TrajPreAttnAvgLongUser
-
+import sys,os
+import numpy as np
+import time
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import time
-import json
-import os
+# 将父目录加入 sys path TODO: 有没有更好的引用方式
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-parameters = RnnParameterData()
-model = TrajPreAttnAvgLongUser(parameters=parameters).cuda()
+from model import TrajPreLocalAttnLong
+from data_transfer import gen_data
+from utils import RnnParameterData, run_simple
 
-parameters.history_mode = 'max'
+def generate_history(data_neural, mode):
+    # use this to gen train data and test data
+    data_train = {}
+    train_idx = {}
+    user_set = data_neural.keys()
+    for u in user_set:
+        if mode == 'test' and len(data_neural[u][mode]) == 0:
+            # 当一用户 session 过少时会发生这个现象
+            continue
+        sessions = data_neural[u]['sessions']
+        train_id = data_neural[u][mode]
+        data_train[u] = {}
+        for c, i in enumerate(train_id):
+            trace = {}
+            if mode == 'train' and c == 0:
+                continue
+            session = sessions[i]
+            target = np.array([s[0] for s in session[1:]])
+            history = []
+            if mode == 'test':
+                test_id = data_neural[u]['train']
+                for tt in test_id:
+                    history.extend([(s[0], s[1]) for s in sessions[tt]])
+            for j in range(c):
+                history.extend([(s[0], s[1]) for s in sessions[train_id[j]]])
+            history_tim = [t[1] for t in history]
+            history_count = [1]
+            last_t = history_tim[0]
+            count = 1
+            for t in history_tim[1:]:
+                if t == last_t:
+                    count += 1
+                else:
+                    history_count[-1] = count
+                    history_count.append(1)
+                    last_t = t
+                    count = 1
+            history_loc = np.reshape(np.array([s[0] for s in history]), (len(history), 1)) # 把多个 history 路径合并成一个？
+            history_tim = np.reshape(np.array([s[1] for s in history]), (len(history), 1))
+            trace['history_loc'] = Variable(torch.LongTensor(history_loc))
+            trace['history_tim'] = Variable(torch.LongTensor(history_tim))
+            trace['history_count'] = history_count
+            loc_tim = history
+            loc_tim.extend([(s[0], s[1]) for s in session[:-1]])
+            loc_np = np.reshape(np.array([s[0] for s in loc_tim]), (len(loc_tim), 1))
+            tim_np = np.reshape(np.array([s[1] for s in loc_tim]), (len(loc_tim), 1))
+            trace['loc'] = Variable(torch.LongTensor(loc_np)) # loc 会与 history loc 有重合， loc 的前半部分为 history loc
+            trace['tim'] = Variable(torch.LongTensor(tim_np))
+            trace['target'] = Variable(torch.LongTensor(target)) # target 会与 loc 有一段的重合，只有 target 的最后一位 loc 没有
+            data_train[u][i] = trace
+        train_idx[u] = train_id
+    return data_train, train_idx
+
+data = gen_data('deepMove', 'small_sample')
+parameters = RnnParameterData(data=data)
+model = TrajPreLocalAttnLong(parameters=parameters).cuda()
 criterion = nn.NLLLoss().cuda()
 optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=parameters.lr,
                            weight_decay=parameters.L2)
 scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', patience=parameters.lr_step,
                                                     factor=parameters.lr_decay, threshold=1e-3)
 lr = parameters.lr
-candidate = parameters.data_neural.keys() # candidate = 用户集
-# 先弄个 markov 来作为 baseline?
-metrics = {'train_loss': [], 'valid_loss': [], 'accuracy': [], 'valid_acc': {}}
-avg_acc_markov, users_acc_markov = markov(parameters, candidate)
-metrics['markov_acc'] = users_acc_markov
-# 生成待投入的数据
-data_train, train_idx = generate_input_long_history(parameters.data_neural, 'train', candidate=candidate)
-data_test, test_idx = generate_input_long_history(parameters.data_neural, 'test', candidate=candidate)
-# 输出各个数据集的大小
-print('users:{} markov:{} train:{} test:{}'.format(len(candidate), avg_acc_markov,
-                                                       len([y for x in train_idx for y in train_idx[x]]),
-                                                       len([y for x in test_idx for y in test_idx[x]])))
+
+data_train, train_idx = generate_history(parameters.data_neural, 'train')
+data_test, test_idx = generate_history(parameters.data_neural, 'test')
 
 SAVE_PATH = './save_model/'
 tmp_path = 'checkpoint/'
 os.mkdir(SAVE_PATH + tmp_path)
-# 开始训练
+
 for epoch in range(parameters.epoch):
     start_time = time.time()     
     model, avg_loss = run_simple(data_train, train_idx, 'train', lr, parameters.clip, model, optimizer,

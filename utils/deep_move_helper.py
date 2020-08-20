@@ -11,27 +11,16 @@ class RnnParameterData(object):
     def __init__(self, loc_emb_size=500, uid_emb_size=40, voc_emb_size=50, tim_emb_size=10, hidden_size=500,
                  lr=1e-3, lr_step=3, lr_decay=0.1, dropout_p=0.5, L2=1e-5, clip=5.0, optim='Adam',
                  history_mode='avg', attn_type='dot', epoch_max=2, rnn_type='LSTM', model_mode="attn_avg_long_user",
-                 data_path='../data/', save_path='../results/', data_name='foursquare'):
-        self.data_path = data_path
-        self.save_path = save_path
-        self.data_name = data_name
-        # data = pickle.load(open(self.data_path + self.data_name + '.pk', 'rb'))
-        # python3 read python2 pickle
-        picklefile=open('./foursquare.pk','rb')
-        data=pickle.load(picklefile,encoding='iso-8859-1')
-        self.vid_list = data['vid_list']
-        self.uid_list = data['uid_list']
+                 data=None):
         self.data_neural = data['data_neural']
-
         self.tim_size = 48
-        self.loc_size = len(self.vid_list) # 需要知道一共有多少个 loc ?
-        self.uid_size = len(self.uid_list)
+        self.loc_size = data['loc_size'] # 需要知道一共有多少个 loc ?
+        self.uid_size = data['uid_size']
         self.loc_emb_size = loc_emb_size
         self.tim_emb_size = tim_emb_size
         self.voc_emb_size = voc_emb_size
         self.uid_emb_size = uid_emb_size
         self.hidden_size = hidden_size
-
         self.epoch = epoch_max
         self.dropout_p = dropout_p
         self.use_cuda = True
@@ -41,7 +30,6 @@ class RnnParameterData(object):
         self.optim = optim
         self.L2 = L2
         self.clip = clip
-
         self.attn_type = attn_type
         self.rnn_type = rnn_type
         self.history_mode = history_mode
@@ -277,7 +265,7 @@ def generate_queue(train_idx, mode, mode2):
                 initial_queue[u] = deque(train_idx[u])
         queue_left = 1
         while queue_left > 0:
-            np.random.shuffle(user) # 这里有问题，暂时不 debug
+            np.random.shuffle(user)
             for j, u in enumerate(user):
                 if len(initial_queue[u]) > 0:
                     train_queue.append((u, initial_queue[u].popleft()))
