@@ -37,7 +37,7 @@ for id in id2lines.keys():
         node = {}
         line = lines[length]
         long = float(line.split('\t')[2])
-        lati = float(line.split('\t')[2])
+        lati = float(line.split('\t')[3])
         loc_id = int(line.replace('\n', '').split('\t')[-1])
         node['location'] = [long, lati]
         node['time_format'] = ['111111']  # 6bits represent year2second
