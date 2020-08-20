@@ -2,7 +2,7 @@ import json
 
 origin = open('datasets/Gowalla_totalCheckins.txt')
 lines = origin.readlines()
-lines = lines[0:456860]
+#lines = lines[0:456860]
 id2lines = {}
 
 last_id = 0
