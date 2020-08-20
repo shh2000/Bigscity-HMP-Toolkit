@@ -28,7 +28,7 @@ def gen_traj_lite():
             node = {}
             node['l'] = [gen_long_lati(), gen_long_lati()]
             node['t'] = ['2020-02-01-13-59-32']
-            node['s_ex'] = {}  # some extend info for this node
+            node['ex'] = {}  # some extend info for this node
             geometry['c'].append(node)
 
         item['g'] = geometry
