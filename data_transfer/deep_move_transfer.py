@@ -63,7 +63,7 @@ def deepMoveTransfer(data):
                     session['tim'].append(now_time.hour if now_time.day - start_time.day == 0 else now_time.hour + 24)
                 else:
                     # new session will be created
-                    sessions[session_id] = session
+                    sessions[str(session_id)] = session
                     # clear session and add session_id
                     session_id += 1
                     session = {
@@ -74,17 +74,17 @@ def deepMoveTransfer(data):
                     session['loc'].append(loc_hash)
                     session['tim'].append(start_time.hour)
         
-        sessions[session_id] = session
+        sessions[str(session_id)] = session
         # TODO: there will be some trouble with only one session user
-        data_transformed[uid] = {}
-        data_transformed[uid]['sessions'] = sessions
+        data_transformed[str(uid)] = {}
+        data_transformed[str(uid)]['sessions'] = sessions
         # 25% session will be test session
-        split_num = math.ceil(session_id*0.75) + 1
-        data_transformed[uid]['train'] = [i for i in range(1, split_num)]
+        split_num = math.ceil(session_id*0.6) + 1
+        data_transformed[str(uid)]['train'] = [str(i) for i in range(1, split_num)]
         if split_num < session_id:
-            data_transformed[uid]['test'] = [i for i in range(split_num, session_id + 1)]
+            data_transformed[str(uid)]['test'] = [str(i) for i in range(split_num, session_id + 1)]
         else:
-            data_transformed[uid]['test'] = []
+            data_transformed[str(uid)]['test'] = []
 
     # label encode
     encoder = LabelEncoder()

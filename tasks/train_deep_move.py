@@ -5,66 +5,13 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 # 将父目录加入 sys path TODO: 有没有更好的引用方式
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
+# sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append('..')
 from model import TrajPreLocalAttnLong
 from data_transfer import gen_data
-from utils import RnnParameterData, run_simple
+from utils import RnnParameterData, run_simple, generate_history
 
-def generate_history(data_neural, mode):
-    # use this to gen train data and test data
-    data_train = {}
-    train_idx = {}
-    user_set = data_neural.keys()
-    for u in user_set:
-        if mode == 'test' and len(data_neural[u][mode]) == 0:
-            # 当一用户 session 过少时会发生这个现象
-            continue
-        sessions = data_neural[u]['sessions']
-        train_id = data_neural[u][mode]
-        data_train[u] = {}
-        for c, i in enumerate(train_id):
-            trace = {}
-            if mode == 'train' and c == 0:
-                continue
-            session = sessions[i]
-            target = np.array([s[0] for s in session[1:]])
-            history = []
-            if mode == 'test':
-                test_id = data_neural[u]['train']
-                for tt in test_id:
-                    history.extend([(s[0], s[1]) for s in sessions[tt]])
-            for j in range(c):
-                history.extend([(s[0], s[1]) for s in sessions[train_id[j]]])
-            history_tim = [t[1] for t in history]
-            history_count = [1]
-            last_t = history_tim[0]
-            count = 1
-            for t in history_tim[1:]:
-                if t == last_t:
-                    count += 1
-                else:
-                    history_count[-1] = count
-                    history_count.append(1)
-                    last_t = t
-                    count = 1
-            history_loc = np.reshape(np.array([s[0] for s in history]), (len(history), 1)) # 把多个 history 路径合并成一个？
-            history_tim = np.reshape(np.array([s[1] for s in history]), (len(history), 1))
-            trace['history_loc'] = Variable(torch.LongTensor(history_loc))
-            trace['history_tim'] = Variable(torch.LongTensor(history_tim))
-            trace['history_count'] = history_count
-            loc_tim = history
-            loc_tim.extend([(s[0], s[1]) for s in session[:-1]])
-            loc_np = np.reshape(np.array([s[0] for s in loc_tim]), (len(loc_tim), 1))
-            tim_np = np.reshape(np.array([s[1] for s in loc_tim]), (len(loc_tim), 1))
-            trace['loc'] = Variable(torch.LongTensor(loc_np)) # loc 会与 history loc 有重合， loc 的前半部分为 history loc
-            trace['tim'] = Variable(torch.LongTensor(tim_np))
-            trace['target'] = Variable(torch.LongTensor(target)) # target 会与 loc 有一段的重合，只有 target 的最后一位 loc 没有
-            data_train[u][i] = trace
-        train_idx[u] = train_id
-    return data_train, train_idx
-
-data = gen_data('deepMove', 'small_sample')
+data = gen_data('deepMove', 'traj_foursquare')
 parameters = RnnParameterData(data=data)
 model = TrajPreLocalAttnLong(parameters=parameters).cuda()
 criterion = nn.NLLLoss().cuda()
@@ -77,7 +24,7 @@ lr = parameters.lr
 data_train, train_idx = generate_history(parameters.data_neural, 'train')
 data_test, test_idx = generate_history(parameters.data_neural, 'test')
 
-SAVE_PATH = './save_model/'
+SAVE_PATH = '../model/save_model/'
 tmp_path = 'checkpoint/'
 os.mkdir(SAVE_PATH + tmp_path)
 
