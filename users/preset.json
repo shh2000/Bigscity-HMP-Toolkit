@@ -1,0 +1,15 @@
+{
+  "models": {
+    "predict": [
+      "deepmove"
+    ],
+    "plan": [
+      "A*"
+    ]
+  },
+  "datasets": [
+    "small_test",
+    "foursquare",
+    "gowalla"
+  ]
+}

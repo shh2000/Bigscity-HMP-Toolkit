@@ -3,3 +3,5 @@
 /venv/
 /.vscode
 __pycache__
+/data_extract/datasets/
+/data_transfer/datasets
