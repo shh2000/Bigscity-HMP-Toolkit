@@ -7,12 +7,14 @@ class LPEDataset(Dataset):
     """
 
     def __init__(self, data):
-        data_dict = data
+        """
+        :param data:
+        """
         # 获得用户的轨迹信息
-        user_idx = data_dict.keys()
+        user_idx = data.keys()
         user_list = []
         for user_id in user_idx:
-            user_list.append(data_dict[user_id])
+            user_list.append({user_id: data[user_id]})
         self.user_list = user_list
 
     def __getitem__(self, index):
