@@ -5,18 +5,56 @@ import json
 
 
 class LocationPredEvaluate(object):
-    def __init__(self, data, mode='ACC', k=1):
-        # 加载json类型的数据为字典类型
-        data_dict = json.loads(data)
-        # 获得模型预测得到的位置数量
-        self.len_pred = data_dict['len_pred']
-        # 保留输入数据的用户位置信息 (以json字典对形式)
-        del data_dict['len_pred']
-        self.data = data_dict
+    def __init__(self, data, datatype='DeepMove', mode='ACC', k=1, len_pred=1):
+        self.data = data
+        self.datatype = datatype
         self.mode = mode
         self.k = k
-        # ACC top-1、top-5
-        # AUC
+        self.len_pred = len_pred
+        self.init_data()
+
+    def init_data(self):
+        """
+        Here we transform specific data types to standard input type
+        """
+
+        # 加载json类型的数据为字典类型
+        if type(self.data) == str:
+            self.data = json.loads(self.data)
+        assert type(self.data) == dict, "Illegal data type."
+
+        # 对对应模型的输出转换格式
+        if self.datatype == 'DeepMove':
+            user_idx = self.data.keys()
+            for user_id in user_idx:
+                trace_idx = self.data[user_id].keys()
+                for trace_id in trace_idx:
+                    trace = self.data[user_id][trace_id]
+                    loc_pred = trace['loc_pred']
+                    new_loc_pred = []
+                    for t_list in loc_pred:
+                        new_loc_pred.append(self.sort_confidence_ids(t_list))
+                    self.data[user_id][trace_id]['loc_pred'] = new_loc_pred
+
+    def sort_confidence_ids(self, confidence_list):
+        """
+        Here we convert the prediction results of the DeepMove model
+        DeepMove model output: confidence of all locations
+        Evaluate model input: location ids based on confidence
+        :param confidence_list:
+        :return: ids_list
+        """
+        assert self.datatype == 'DeepMove', 'call function sort_confidence_ids.'
+        sorted_list = sorted(confidence_list, reverse=True)
+        mark_list = [0 for i in confidence_list]
+        ids_list = []
+        for item in sorted_list:
+            for i in range(len(confidence_list)):
+                if confidence_list[i] == item and mark_list[i] == 0:
+                    mark_list[i] = 1
+                    ids_list.append(i)
+                    break
+        return ids_list
 
     '''
     预测评价指标，参考材料 https://blog.csdn.net/guolindonggld/article/details/87856780
@@ -98,9 +136,12 @@ class LocationPredEvaluate(object):
             trace_ids = user.keys()
             for trace_id in trace_ids:
                 trace = user[trace_id]
-                loc_true.append(trace['loc_true'].item())
-                for j in range(len(trace['loc_pred'])):
-                    loc_pred[j].append(trace['loc_pred'][j].item())
+                t_loc_true = trace['loc_true']
+                t_loc_pred = trace['loc_pred']
+                for i in range(len(t_loc_true)):
+                    loc_true.append(t_loc_true[i])
+                    for j in range(self.len_pred):
+                        loc_pred[j].append(t_loc_pred[i][j])
         if self.mode == 'ACC':
             avg_acc = self.topk(np.array(loc_pred), np.array(loc_true))
             print('-------- 该模型在 top-{} ACC 评估方法下 avg_acc={} --------'.format(self.k, avg_acc))

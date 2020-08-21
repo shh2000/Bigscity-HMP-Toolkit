@@ -11,27 +11,16 @@ class RnnParameterData(object):
     def __init__(self, loc_emb_size=500, uid_emb_size=40, voc_emb_size=50, tim_emb_size=10, hidden_size=500,
                  lr=1e-3, lr_step=3, lr_decay=0.1, dropout_p=0.5, L2=1e-5, clip=5.0, optim='Adam',
                  history_mode='avg', attn_type='dot', epoch_max=2, rnn_type='LSTM', model_mode="attn_avg_long_user",
-                 data_path='../data/', save_path='../results/', data_name='foursquare'):
-        self.data_path = data_path
-        self.save_path = save_path
-        self.data_name = data_name
-        # data = pickle.load(open(self.data_path + self.data_name + '.pk', 'rb'))
-        # python3 read python2 pickle
-        picklefile=open('./foursquare.pk','rb')
-        data=pickle.load(picklefile,encoding='iso-8859-1')
-        self.vid_list = data['vid_list']
-        self.uid_list = data['uid_list']
+                 data=None):
         self.data_neural = data['data_neural']
-
         self.tim_size = 48
-        self.loc_size = len(self.vid_list) # 需要知道一共有多少个 loc ?
-        self.uid_size = len(self.uid_list)
+        self.loc_size = data['loc_size'] # 需要知道一共有多少个 loc ?
+        self.uid_size = data['uid_size']
         self.loc_emb_size = loc_emb_size
         self.tim_emb_size = tim_emb_size
         self.voc_emb_size = voc_emb_size
         self.uid_emb_size = uid_emb_size
         self.hidden_size = hidden_size
-
         self.epoch = epoch_max
         self.dropout_p = dropout_p
         self.use_cuda = True
@@ -41,88 +30,62 @@ class RnnParameterData(object):
         self.optim = optim
         self.L2 = L2
         self.clip = clip
-
         self.attn_type = attn_type
         self.rnn_type = rnn_type
         self.history_mode = history_mode
         self.model_mode = model_mode
 
-def generate_input_history(data_neural, mode, mode2=None, candidate=None):
-    # user 呢？？？
+def generate_history(data_neural, mode):
+    # use this to gen train data and test data
     data_train = {}
     train_idx = {}
-    if candidate is None:
-        candidate = data_neural.keys()
-    for u in candidate:
+    user_set = data_neural.keys()
+    for u in user_set:
+        if mode == 'test' and len(data_neural[u][mode]) == 0:
+            # 当一用户 session 过少时会发生这个现象
+            continue
         sessions = data_neural[u]['sessions']
         train_id = data_neural[u][mode]
         data_train[u] = {}
         for c, i in enumerate(train_id):
+            trace = {}
             if mode == 'train' and c == 0:
                 continue
             session = sessions[i]
-            trace = {}
-            loc_np = np.reshape(np.array([s[0] for s in session[:-1]]), (len(session[:-1]), 1))
-            tim_np = np.reshape(np.array([s[1] for s in session[:-1]]), (len(session[:-1]), 1))
-            # voc_np = np.reshape(np.array([s[2] for s in session[:-1]]), (len(session[:-1]), 27))
+            if len(session) <= 1:
+                continue
             target = np.array([s[0] for s in session[1:]])
-            trace['loc'] = Variable(torch.LongTensor(loc_np))
-            trace['target'] = Variable(torch.LongTensor(target))
-            trace['tim'] = Variable(torch.LongTensor(tim_np))
-            # trace['voc'] = Variable(torch.LongTensor(voc_np))
-
             history = []
             if mode == 'test':
                 test_id = data_neural[u]['train']
                 for tt in test_id:
                     history.extend([(s[0], s[1]) for s in sessions[tt]])
             for j in range(c):
-                history.extend([(s[0], s[1]) for s in sessions[train_id[j]]]) # what ??
-            history = sorted(history, key=lambda x: x[1], reverse=False) # what ??
-
-            # merge traces with same time stamp
-            if mode2 == 'max':
-                history_tmp = {}
-                for tr in history:
-                    if tr[1] not in history_tmp:
-                        history_tmp[tr[1]] = [tr[0]]
-                    else:
-                        history_tmp[tr[1]].append(tr[0])
-                history_filter = []
-                for t in history_tmp:
-                    if len(history_tmp[t]) == 1:
-                        history_filter.append((history_tmp[t][0], t))
-                    else:
-                        tmp = Counter(history_tmp[t]).most_common()
-                        if tmp[0][1] > 1:
-                            history_filter.append((history_tmp[t][0], t))
-                        else:
-                            ti = np.random.randint(len(tmp))
-                            history_filter.append((tmp[ti][0], t))
-                history = history_filter
-                history = sorted(history, key=lambda x: x[1], reverse=False)
-            elif mode2 == 'avg':
-                history_tim = [t[1] for t in history]
-                history_count = [1]
-                last_t = history_tim[0]
-                count = 1
-                for t in history_tim[1:]:
-                    if t == last_t:
-                        count += 1
-                    else:
-                        history_count[-1] = count
-                        history_count.append(1)
-                        last_t = t
-                        count = 1
-            ################
-
-            history_loc = np.reshape(np.array([s[0] for s in history]), (len(history), 1))
+                history.extend([(s[0], s[1]) for s in sessions[train_id[j]]])
+            history_tim = [t[1] for t in history]
+            history_count = [1]
+            last_t = history_tim[0]
+            count = 1
+            for t in history_tim[1:]:
+                if t == last_t:
+                    count += 1
+                else:
+                    history_count[-1] = count
+                    history_count.append(1)
+                    last_t = t
+                    count = 1
+            history_loc = np.reshape(np.array([s[0] for s in history]), (len(history), 1)) # 把多个 history 路径合并成一个？
             history_tim = np.reshape(np.array([s[1] for s in history]), (len(history), 1))
             trace['history_loc'] = Variable(torch.LongTensor(history_loc))
             trace['history_tim'] = Variable(torch.LongTensor(history_tim))
-            if mode2 == 'avg':
-                trace['history_count'] = history_count
-
+            trace['history_count'] = history_count
+            loc_tim = history
+            loc_tim.extend([(s[0], s[1]) for s in session[:-1]])
+            loc_np = np.reshape(np.array([s[0] for s in loc_tim]), (len(loc_tim), 1))
+            tim_np = np.reshape(np.array([s[1] for s in loc_tim]), (len(loc_tim), 1))
+            trace['loc'] = Variable(torch.LongTensor(loc_np)) # loc 会与 history loc 有重合， loc 的前半部分为 history loc
+            trace['tim'] = Variable(torch.LongTensor(tim_np))
+            trace['target'] = Variable(torch.LongTensor(target)) # target 会与 loc 有一段的重合，只有 target 的最后一位 loc 没有
             data_train[u][i] = trace
         train_idx[u] = train_id
     return data_train, train_idx
@@ -277,7 +240,7 @@ def generate_queue(train_idx, mode, mode2):
                 initial_queue[u] = deque(train_idx[u])
         queue_left = 1
         while queue_left > 0:
-            np.random.shuffle(user) # 这里有问题，暂时不 debug
+            np.random.shuffle(user)
             for j, u in enumerate(user):
                 if len(initial_queue[u]) > 0:
                     train_queue.append((u, initial_queue[u].popleft()))

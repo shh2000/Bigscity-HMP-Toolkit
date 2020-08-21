@@ -1,42 +1,33 @@
-# 测试用的脚本
-
-from utils import RnnParameterData, generate_input_long_history, markov, run_simple
-from DeepMove import TrajPreAttnAvgLongUser
-
+import sys,os
+import numpy as np
+import time
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import time
-import json
-import os
+# 将父目录加入 sys path TODO: 有没有更好的引用方式
+# sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append('..')
+from model import TrajPreLocalAttnLong
+from data_transfer import gen_data
+from utils import RnnParameterData, run_simple, generate_history
 
-parameters = RnnParameterData()
-model = TrajPreAttnAvgLongUser(parameters=parameters).cuda()
-
-parameters.history_mode = 'max'
+data = gen_data('deepMove', 'traj_foursquare')
+parameters = RnnParameterData(data=data)
+model = TrajPreLocalAttnLong(parameters=parameters).cuda()
 criterion = nn.NLLLoss().cuda()
 optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=parameters.lr,
                            weight_decay=parameters.L2)
 scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', patience=parameters.lr_step,
                                                     factor=parameters.lr_decay, threshold=1e-3)
 lr = parameters.lr
-candidate = parameters.data_neural.keys() # candidate = 用户集
-# 先弄个 markov 来作为 baseline?
-metrics = {'train_loss': [], 'valid_loss': [], 'accuracy': [], 'valid_acc': {}}
-avg_acc_markov, users_acc_markov = markov(parameters, candidate)
-metrics['markov_acc'] = users_acc_markov
-# 生成待投入的数据
-data_train, train_idx = generate_input_long_history(parameters.data_neural, 'train', candidate=candidate)
-data_test, test_idx = generate_input_long_history(parameters.data_neural, 'test', candidate=candidate)
-# 输出各个数据集的大小
-print('users:{} markov:{} train:{} test:{}'.format(len(candidate), avg_acc_markov,
-                                                       len([y for x in train_idx for y in train_idx[x]]),
-                                                       len([y for x in test_idx for y in test_idx[x]])))
 
-SAVE_PATH = './save_model/'
+data_train, train_idx = generate_history(parameters.data_neural, 'train')
+data_test, test_idx = generate_history(parameters.data_neural, 'test')
+
+SAVE_PATH = '../model/save_model/'
 tmp_path = 'checkpoint/'
 os.mkdir(SAVE_PATH + tmp_path)
-# 开始训练
+
 for epoch in range(parameters.epoch):
     start_time = time.time()     
     model, avg_loss = run_simple(data_train, train_idx, 'train', lr, parameters.clip, model, optimizer,
