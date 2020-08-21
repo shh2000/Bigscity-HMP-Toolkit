@@ -1,4 +1,5 @@
 from evaluate.loc_pred_evaluate import loc_pred_evaluate_model as lpem
+import json
 
 if __name__ == '__main__':
     data = '{' \

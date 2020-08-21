@@ -120,43 +120,70 @@ class LocationPredEvaluate(object):
                 tot_list += t
             return np.mean(tot_list < self.k)
 
+    def run_evaluate(self, loc_pred, loc_true, field):
+        assert len(loc_pred) == len(loc_true), "位置预测评估: 预测数据与真实数据大小不一致"
+        loc_pred2 = [[] for j in range(self.len_pred)]
+        for i in range(len(loc_true)):
+            for j in range(self.len_pred):
+                loc_pred2[j].append(loc_pred[i][j])
+        if self.mode == 'ACC':
+            avg_acc = self.topk(np.array(loc_pred2, dtype=object), np.array(loc_true, dtype=object))
+            if field == 'model':
+                print('---- 该模型在 top-{} ACC 评估方法下 avg_acc={:.3f} ----'.format(self.k, avg_acc))
+            else:
+                print('accuracy={:.3f}'.format(avg_acc))
+        elif self.mode == 'RMSE':
+            avg_loss = self.RMSE(np.array(loc_pred2[0]), np.array(loc_true))
+            if field == 'model':
+                print('---- 该模型在 RMSE 评估方法下 avg_loss={:.3f} ----'.format(avg_loss))
+            else:
+                print('RMSE avg_loss={:.3f}'.format(avg_loss))
+        elif self.mode == "MSE":
+            avg_loss = self.MSE(np.array(loc_pred2[0]), np.array(loc_true))
+            if field == 'model':
+                print('---- 该模型在 MSE 评估方法下 avg_loss={:.3f} ----'.format(avg_loss))
+            else:
+                print('MSE avg_loss={:.3f}'.format(avg_loss))
+        elif self.mode == "MAE":
+            avg_loss = self.MAE(np.array(loc_pred2[0]), np.array(loc_true))
+            if field == 'model':
+                print('---- 该模型在 MAE 评估方法下 avg_loss={:.3f} ----'.format(avg_loss))
+            else:
+                print('MAE avg_loss={:.3f}'.format(avg_loss))
+        elif self.mode == "MAPE":
+            avg_loss = self.MAPE(np.array(loc_pred2[0]), np.array(loc_true))
+            if field == 'model':
+                print('---- 该模型在 MAPE 评估方法下 avg_loss={:.3f} ----'.format(avg_loss))
+            else:
+                print('MAPE avg_loss={:.3f}'.format(avg_loss))
+        elif self.mode == "MARE":
+            avg_loss = self.MARE(np.array(loc_pred2[0]), np.array(loc_true))
+            if field == 'model':
+                print('---- 该模型在 MARE 评估方法下 avg_loss={:.3f} ----'.format(avg_loss))
+            else:
+                print('MARE avg_loss={:.3f}'.format(avg_loss))
+
     def run(self):
         test_data_set = lped.LPEDataset(self.data)
         test_data_loader = DataLoader(dataset=test_data_set, batch_size=1, shuffle=True)
         # 用户轨迹列表
-        user_list = []
+        user_list = {}
         for i, user in enumerate(test_data_loader):
-            user_list.append(user)
+            for user_id in user.keys():
+                user_list[user_id] = user[user_id]
         # 提取所有用户轨迹的位置信息
         loc_true = []
         loc_pred = []
-        for i in range(self.len_pred):
-            loc_pred.append([])
-        for user in user_list:
+        for user_id in user_list.keys():
+            user = user_list[user_id]
+            print('-------------- user_id {} --------------'.format(user_id))
             trace_ids = user.keys()
             for trace_id in trace_ids:
                 trace = user[trace_id]
                 t_loc_true = trace['loc_true']
                 t_loc_pred = trace['loc_pred']
-                for i in range(len(t_loc_true)):
-                    loc_true.append(t_loc_true[i])
-                    for j in range(self.len_pred):
-                        loc_pred[j].append(t_loc_pred[i][j])
-        if self.mode == 'ACC':
-            avg_acc = self.topk(np.array(loc_pred), np.array(loc_true))
-            print('-------- 该模型在 top-{} ACC 评估方法下 avg_acc={} --------'.format(self.k, avg_acc))
-        elif self.mode == 'RMSE':
-            avg_loss = self.RMSE(np.array(loc_pred[0]), np.array(loc_true))
-            print('-------- 该模型在 RMSE 评估方法下 avg_loss={} --------'.format(avg_loss))
-        elif self.mode == "MSE":
-            avg_loss = self.MSE(np.array(loc_pred[0]), np.array(loc_true))
-            print('-------- 该模型在 MSE 评估方法下 avg_loss={} --------'.format(avg_loss))
-        elif self.mode == "MAE":
-            avg_loss = self.MAE(np.array(loc_pred[0]), np.array(loc_true))
-            print('-------- 该模型在 MAE 评估方法下 avg_loss={} --------'.format(avg_loss))
-        elif self.mode == "MAPE":
-            avg_loss = self.MAPE(np.array(loc_pred[0]), np.array(loc_true))
-            print('-------- 该模型在 MAPE 评估方法下 avg_loss={} --------'.format(avg_loss))
-        elif self.mode == "MARE":
-            avg_loss = self.MARE(np.array(loc_pred[0]), np.array(loc_true))
-            print('-------- 该模型在 MARE 评估方法下 avg_loss={} --------'.format(avg_loss))
+                loc_true.extend(t_loc_true)
+                loc_pred.extend(t_loc_pred)
+                print('trace_id {} : '.format(trace_id), end="")
+                self.run_evaluate(t_loc_pred, t_loc_true, 'trace')
+        self.run_evaluate(loc_pred, loc_true, 'model')
