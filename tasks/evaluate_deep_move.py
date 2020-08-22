@@ -33,11 +33,9 @@ model.train(False)
 
 print('start evaluate')
 evaluate_input = {}
-evaluate_input['len_pred'] = data['loc_size']
 verbose = 100
 cnt = 1
 for user in data_train.keys():
-    trace_id = 1
     evaluate_input[user] = {}
     if cnt % verbose == 0:
         print('start {} user: {}'.format(cnt, user))
@@ -53,14 +51,13 @@ for user in data_train.keys():
         # uid = Variable(torch.LongTensor([user]))
         target_len = target.data.size()[0]
         scores = model(loc, tim, target_len)
-        for i in range(target_len):
-            trace_input = {}
-            trace_input['loc_true'] = target[i].item()
-            trace_input['loc_pred'] = scores[i].int().tolist() # TODO: 不应该是 int，先保持这样对接
-            evaluate_input[user][trace_id] = trace_input
-            trace_id += 1
+        trace_input = {}
+        trace_input['loc_true'] = target.tolist()
+        trace_input['loc_pred'] = scores.tolist()
+        evaluate_input[user][session_id] = trace_input
+    
     cnt += 1
     
 
-lpt = lpem.LocationPredEvaluate(evaluate_input, "ACC", 2)
+lpt = lpem.LocationPredEvaluate(evaluate_input, "ACC", 2, data['loc_size'])
 lpt.run()
