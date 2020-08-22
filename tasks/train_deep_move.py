@@ -12,6 +12,7 @@ from data_transfer import gen_data
 from utils import RnnParameterData, run_simple, generate_history
 
 data = gen_data('deepMove', 'traj_foursquare')
+print('load data')
 parameters = RnnParameterData(data=data)
 model = TrajPreLocalAttnLong(parameters=parameters).cuda()
 criterion = nn.NLLLoss().cuda()
@@ -27,7 +28,7 @@ data_test, test_idx = generate_history(parameters.data_neural, 'test')
 SAVE_PATH = '../model/save_model/'
 tmp_path = 'checkpoint/'
 os.mkdir(SAVE_PATH + tmp_path)
-
+print('start train')
 for epoch in range(parameters.epoch):
     start_time = time.time()     
     model, avg_loss = run_simple(data_train, train_idx, 'train', lr, parameters.clip, model, optimizer,
