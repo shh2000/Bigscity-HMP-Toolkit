@@ -15,7 +15,7 @@ def parseTime(time, time_format):
     if time_format[0] == '111111':
         return datetime.strptime(time[0], '%Y-%m-%d-%H-%M-%S') # TODO: check if this is UTC Time ?
 
-def deepMoveTransfer(data):
+def deepMoveTransfer(data, min_session_len = 2, min_sessions = 2):
     '''
     data: raw data which obey the trajectory data format
     {
@@ -46,7 +46,7 @@ def deepMoveTransfer(data):
             'tim': []
         }
         if len(traj_data) == 0:
-            # TODO: shouldn't happen this
+            # TODO: shouldn't happen this, throw error ?
             continue
         start_time = parseTime(traj_data[0]['time'], traj_data[0]['time_format'])
         for index, node in enumerate(traj_data):
@@ -62,10 +62,12 @@ def deepMoveTransfer(data):
                     session['loc'].append(loc_hash)
                     session['tim'].append(now_time.hour if now_time.day - start_time.day == 0 else now_time.hour + 24)
                 else:
-                    # new session will be created
-                    sessions[str(session_id)] = session
-                    # clear session and add session_id
-                    session_id += 1
+                    if len(session['loc']) >= min_session_len:
+                        # session less than 2 point should be filtered, because this will cause target be empty
+                        # new session will be created
+                        sessions[str(session_id)] = session
+                        # clear session and add session_id
+                        session_id += 1
                     session = {
                         'loc': [],
                         'tim': []
@@ -73,18 +75,21 @@ def deepMoveTransfer(data):
                     start_time = now_time
                     session['loc'].append(loc_hash)
                     session['tim'].append(start_time.hour)
-        
-        sessions[str(session_id)] = session
-        # TODO: there will be some trouble with only one session user
-        data_transformed[str(uid)] = {}
-        data_transformed[str(uid)]['sessions'] = sessions
-        # 25% session will be test session
-        split_num = math.ceil(session_id*0.6) + 1
-        data_transformed[str(uid)]['train'] = [str(i) for i in range(1, split_num)]
-        if split_num < session_id:
-            data_transformed[str(uid)]['test'] = [str(i) for i in range(split_num, session_id + 1)]
+        if len(session['loc']) >= min_session_len:
+            sessions[str(session_id)] = session
         else:
-            data_transformed[str(uid)]['test'] = []
+            session_id -= 1
+        # TODO: there will be some trouble with only one session user
+        if len(sessions) >= min_sessions:
+            data_transformed[str(uid)] = {}
+            data_transformed[str(uid)]['sessions'] = sessions
+            # 25% session will be test session
+            split_num = math.ceil(session_id*0.6) + 1
+            data_transformed[str(uid)]['train'] = [str(i) for i in range(1, split_num)]
+            if split_num < session_id:
+                data_transformed[str(uid)]['test'] = [str(i) for i in range(split_num, session_id + 1)]
+            else:
+                data_transformed[str(uid)]['test'] = []
 
     # label encode
     encoder = LabelEncoder()

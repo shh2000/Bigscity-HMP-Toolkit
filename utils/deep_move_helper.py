@@ -10,7 +10,7 @@ from collections import deque, Counter
 class RnnParameterData(object):
     def __init__(self, loc_emb_size=500, uid_emb_size=40, voc_emb_size=50, tim_emb_size=10, hidden_size=500,
                  lr=1e-3, lr_step=3, lr_decay=0.1, dropout_p=0.5, L2=1e-5, clip=5.0, optim='Adam',
-                 history_mode='avg', attn_type='dot', epoch_max=2, rnn_type='LSTM', model_mode="attn_avg_long_user",
+                 history_mode='avg', attn_type='dot', epoch_max=2, rnn_type='LSTM', model_mode="attn_local_long",
                  data=None):
         self.data_neural = data['data_neural']
         self.tim_size = 48
@@ -172,12 +172,13 @@ def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2
     for c in range(queue_len):
         optimizer.zero_grad()
         u, i = run_queue.popleft()
+        print(u, i)
         if u not in users_acc:
             users_acc[u] = [0, 0]
         loc = data[u][i]['loc'].cuda()
         tim = data[u][i]['tim'].cuda()
         target = data[u][i]['target'].cuda()
-        uid = Variable(torch.LongTensor([u])).cuda()
+        uid = Variable(torch.LongTensor([int(u)])).cuda()
 
         if 'attn' in mode2:
             history_loc = data[u][i]['history_loc'].cuda()
