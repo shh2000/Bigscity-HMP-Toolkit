@@ -11,7 +11,7 @@ sys.path.append('..')
 from model import TrajPreLocalAttnLong
 from data_transfer import gen_data
 from utils import RnnParameterData, generate_history
-from evaluate.loc_pred_evaluate import loc_pred_evaluate_model as lpem
+from evaluate import loc_pred_evaluate_model as lpem
 
 data = gen_data('deepMove', 'traj_foursquare')
 print('data load')
