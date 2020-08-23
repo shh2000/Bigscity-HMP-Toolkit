@@ -1,7 +1,8 @@
 from torch.utils.data import DataLoader
 import numpy as np
-from data_extract.loc_pred_evaluate import loc_pred_evaluate_data as lped
 import json
+
+from evaluate import loc_pred_evaluate_data as lped
 
 
 class LocationPredEvaluate(object):
