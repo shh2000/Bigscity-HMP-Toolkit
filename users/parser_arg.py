@@ -7,7 +7,7 @@ import os
 def run_model_on_dataset(model, dataset):
     if model == 'deepmove' and dataset == 'foursquare':
         os.system(
-            r'cd D:\study\Bigscity-HMP-Toolkit\tasks && python train_deep_move.py')
+            r'cd ..\tasks && python train_deep_move.py')
         return True
     else:
         print('You want to run {} on {}, no this model or datasets!'.format(model, dataset))
@@ -16,7 +16,7 @@ def run_model_on_dataset(model, dataset):
 
 def evaluate_model_on_dataset(model, model_type):
     if model == 'deepmove' and model_type == 'predict':
-        os.system(r'cd D:\study\Bigscity-HMP-Toolkit\tasks && python evaluate_deep_move.py')
+        os.system(r'cd ..\tasks && python evaluate_deep_move.py')
     else:
         print('You want to evaluate {}-type model {}, no this model!'.format(model, model_type))
 
