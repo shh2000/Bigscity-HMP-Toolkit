@@ -30,6 +30,7 @@ class LocationPredEvaluate(object):
             for user_id in user_idx:
                 trace_idx = self.data[user_id].keys()
                 for trace_id in trace_idx:
+                    # print(user_id, trace_id)
                     trace = self.data[user_id][trace_id]
                     loc_pred = trace['loc_pred']
                     new_loc_pred = []
@@ -55,6 +56,9 @@ class LocationPredEvaluate(object):
                     mark_list[i] = 1
                     ids_list.append(i)
                     break
+            if self.mode == "ACC" and len(ids_list) == self.k:
+                self.len_pred = self.k
+                break
         return ids_list
 
     '''
@@ -118,7 +122,7 @@ class LocationPredEvaluate(object):
             tot_list = np.zeros(len(loc_true), dtype=int)
             for i in range(self.k):
                 t, avg_acc = self.get_acc(loc_pred[i], loc_true)
-                tot_list += t
+                tot_list = tot_list + t
             return np.mean(tot_list < self.k)
 
     def run_evaluate(self, loc_pred, loc_true, field):
