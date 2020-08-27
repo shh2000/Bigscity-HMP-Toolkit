@@ -22,6 +22,7 @@ datasets = 'traj_foursquare'
 # TODO: 这部分仍旧照搬 deepMove 的源码，不太适配还需要进一步改进
 model_name = 'simpleRNN' # now support deepMove/simpleRNN
 model_mode = 'simple' # simple or attn_local_long
+use_cuda = True
 #################################
 data = gen_data(model_name, datasets) # 不传上述三个参数时，将使用默认数值
 print('data load')
@@ -38,11 +39,11 @@ data_train, train_idx = generate_history(data_neural, 'train') # TODO: 评估的
 print('data len: ', len(data_train))
 # TODO:这里应该加载预训练好保存了的参数
 # 但目前就先这样吧, for test
-parameters = RnnParameterData(data=data, time_size=time_length, model_mode=model_mode)
+parameters = RnnParameterData(data=data, time_size=time_length, model_mode=model_mode, use_cuda = use_cuda)
 if model_name == 'deepMove':
-    model = TrajPreLocalAttnLong(parameters=parameters).cuda()
+    model = TrajPreLocalAttnLong(parameters=parameters).cuda() if use_cuda else TrajPreLocalAttnLong(parameters=parameters)
 else:
-    model = SimpleRNN(parameters=parameters).cuda()
+    model = SimpleRNN(parameters=parameters).cuda() if use_cuda else SimpleRNN(parameters=parameters)
 model.train(False)
 
 print('start evaluate')
@@ -57,9 +58,14 @@ for user in data_train.keys():
         session = data_train[user][session_id]
         if model_name == 'deepMove':
             # 对于 TrajPreLocalAttnLong 是这个参数
-            loc = session['loc'].cuda()
-            tim = session['tim'].cuda()
-            target = session['target'].cuda()
+            if use_cuda:
+                loc = session['loc'].cuda()
+                tim = session['tim'].cuda()
+                target = session['target'].cuda()
+            else:
+                loc = session['loc']
+                tim = session['tim']
+                target = session['target']
             # uid = Variable(torch.LongTensor([user]))
             target_len = target.data.size()[0]
             scores = model(loc, tim, target_len)
@@ -68,9 +74,14 @@ for user in data_train.keys():
             trace_input['loc_pred'] = scores.tolist()
             evaluate_input[user][session_id] = trace_input
         elif model_name == 'simpleRNN':
-            loc = session['loc'].cuda()
-            tim = session['tim'].cuda()
-            target = session['target'].cuda()
+            if use_cuda:
+                loc = session['loc'].cuda()
+                tim = session['tim'].cuda()
+                target = session['target'].cuda()
+            else:
+                loc = session['loc']
+                tim = session['tim']
+                target = session['target']
             scores = model(loc, tim)
             scores = scores[-target.data.size()[0]:]
             trace_input = {}

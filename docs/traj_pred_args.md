@@ -15,3 +15,4 @@
   * 目前仅支持 SimpleRNN、DeepMove。
 * datasets: 指定使用的数据集。
   * 目前支持 traj_foursquare、traj_gowalla。但是 traj_gowalla 存在性能问题，在数据 transfer 阶段会很慢。
+* use_cuda: 是否使用 cuda。
