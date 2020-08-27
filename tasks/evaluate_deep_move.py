@@ -59,5 +59,5 @@ for user in data_train.keys():
     cnt += 1
     
 
-lpt = lpem.LocationPredEvaluate(evaluate_input, "ACC", 2, data['loc_size'])
+lpt = lpem.LocationPredEvaluate(evaluate_input, "DeepMove", "ACC", 2, data['loc_size'])
 lpt.run()
