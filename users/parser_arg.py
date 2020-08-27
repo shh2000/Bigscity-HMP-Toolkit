@@ -6,8 +6,7 @@ import os
 
 def run_model_on_dataset(model, dataset):
     if model == 'deepmove' and dataset == 'foursquare':
-        os.system(
-            r'cd ..\tasks && python train_deep_move.py')
+        os.system(r'cd ..\tasks && python train_deep_move.py')
         return True
     else:
         print('You want to run {} on {}, no this model or datasets!'.format(model, dataset))
