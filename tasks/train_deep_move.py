@@ -14,9 +14,15 @@ from utils import RnnParameterData, run_simple, generate_history
 
 data = gen_data('deepMove', 'traj_foursquare')
 print('load data')
-parameters = RnnParameterData(data=data)
-model = TrajPreLocalAttnLong(parameters=parameters)
-criterion = nn.NLLLoss()
+
+use_cuda = True
+parameters = RnnParameterData(data=data, use_cuda = use_cuda)
+if use_cuda:
+    model = TrajPreLocalAttnLong(parameters=parameters).cuda()
+    criterion = nn.NLLLoss().cuda()
+else:
+    model = TrajPreLocalAttnLong(parameters=parameters)
+    criterion = nn.NLLLoss()
 optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=parameters.lr,
                        weight_decay=parameters.L2)
 scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', patience=parameters.lr_step,
@@ -28,24 +34,16 @@ data_test, test_idx = generate_history(parameters.data_neural, 'test')
 
 SAVE_PATH = '../model/save_model/'
 tmp_path = 'checkpoint/'
-import datetime
-
-x = str(datetime.datetime.today())
-x = x.replace('.', '')
-x = x.replace(':', '')
-x = x.replace('-', '')
-x = x.replace(' ', '')
-os.rename('../model/save_model/checkpoint/', '../model/save_model/checkpoint' + x + '/')
 os.mkdir(SAVE_PATH + tmp_path)
 print('start train')
 for epoch in range(parameters.epoch):
     start_time = time.time()
     model, avg_loss = run_simple(data_train, train_idx, 'train', lr, parameters.clip, model, optimizer,
-                                 criterion, parameters.model_mode)
+                                         criterion, parameters.model_mode, use_cuda)
     print('==>Train Epoch:{:0>2d} Loss:{:.4f} lr:{}'.format(epoch, avg_loss, lr))
     metrics['train_loss'].append(avg_loss)
     avg_loss, avg_acc, users_acc = run_simple(data_test, test_idx, 'test', lr, parameters.clip, model,
-                                              optimizer, criterion, parameters.model_mode)
+                                                  optimizer, criterion, parameters.model_mode, use_cuda)
     print('==>Test Acc:{:.4f} Loss:{:.4f}'.format(avg_acc, avg_loss))
     metrics['valid_loss'].append(avg_loss)
     metrics['accuracy'].append(avg_acc)

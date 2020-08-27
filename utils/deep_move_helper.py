@@ -12,10 +12,10 @@ class RnnParameterData(object):
     def __init__(self, loc_emb_size=500, uid_emb_size=40, voc_emb_size=50, tim_emb_size=10, hidden_size=500,
                  lr=1e-3, lr_step=3, lr_decay=0.1, dropout_p=0.5, L2=1e-5, clip=5.0, optim='Adam',
                  history_mode='avg', attn_type='dot', epoch_max=2, rnn_type='LSTM', model_mode="attn_local_long",
-                 data=None):
+                 data=None, time_size = 48, use_cuda = True):
         self.data_neural = data['data_neural']
-        self.tim_size = 48
-        self.loc_size = data['loc_size']  # 需要知道一共有多少个 loc ?
+        self.tim_size = time_size
+        self.loc_size = data['loc_size'] # 需要知道一共有多少个 loc ?
         self.uid_size = data['uid_size']
         self.loc_emb_size = loc_emb_size
         self.tim_emb_size = tim_emb_size
@@ -24,7 +24,7 @@ class RnnParameterData(object):
         self.hidden_size = hidden_size
         self.epoch = epoch_max
         self.dropout_p = dropout_p
-        self.use_cuda = False
+        self.use_cuda = use_cuda
         self.lr = lr
         self.lr_step = lr_step
         self.lr_decay = lr_decay
@@ -158,8 +158,7 @@ def markov(parameters, candidate):
     avg_acc = np.mean([user_acc[u] for u in user_acc])
     return avg_acc, user_acc
 
-
-def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2=None):
+def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2=None, use_cuda):
     """mode=train: return model, avg_loss
        mode=test: return avg_loss,avg_acc,users_rnn_acc"""
     run_queue = None
@@ -180,14 +179,24 @@ def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2
         print(u, i)
         if u not in users_acc:
             users_acc[u] = [0, 0]
-        loc = data[u][i]['loc']
-        tim = data[u][i]['tim']
-        target = data[u][i]['target']
-        uid = Variable(torch.LongTensor([int(u)]))
+        if use_cuda:
+            loc = data[u][i]['loc'].cuda()
+            tim = data[u][i]['tim'].cuda()
+            target = data[u][i]['target'].cuda()
+            uid = Variable(torch.LongTensor([int(u)])).cuda()
+        else:
+            loc = data[u][i]['loc']
+            tim = data[u][i]['tim']
+            target = data[u][i]['target']
+            uid = Variable(torch.LongTensor([int(u)]))
 
         if 'attn' in mode2:
-            history_loc = data[u][i]['history_loc']
-            history_tim = data[u][i]['history_tim']
+            if use_cuda:
+                history_loc = data[u][i]['history_loc'].cuda()
+                history_tim = data[u][i]['history_tim'].cuda()
+            else:
+                history_loc = data[u][i]['history_loc']
+                history_tim = data[u][i]['history_tim']
 
         if mode2 in ['simple', 'simple_long']:
             scores = model(loc, tim)
@@ -199,8 +208,8 @@ def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2
             target_len = target.data.size()[0]
             scores = model(loc, tim, target_len)  # 为什么这个 attn 不用考虑历史数据？
 
-        if scores.data.size()[0] > target.data.size()[0]:  # 这里的 score 是怎么回事 score 就是对 loc list 给出的置信度
-            # 讲道理应该不会出现这个情况，除非模型写错了
+        if scores.data.size()[0] > target.data.size()[0]: # 这里的 score 是怎么回事 score 就是对 loc list 给出的置信度
+            # 给 SimpleRNN 用
             scores = scores[-target.data.size()[0]:]
         loss = criterion(scores, target)
 

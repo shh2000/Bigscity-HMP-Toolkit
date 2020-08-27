@@ -12,4 +12,4 @@ a toolkit for Location Prediction and Route Planning based on torch
 
 * gowalla数据集
 * foursquare数据集（checkins.dat）
-* 
+* foursquare数据集（[kaggle](https://www.kaggle.com/chetanism/foursquare-nyc-and-tokyo-checkin-dataset)）
