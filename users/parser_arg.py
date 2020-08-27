@@ -1,6 +1,25 @@
 import json
 import argparse
 
+import os
+
+
+def run_model_on_dataset(model, dataset):
+    print(model, dataset)
+    if model == 'deepmove' and dataset == 'foursquare':
+        os.system(r'cd D:\study\Bigscity-HMP-Toolkit\tasks && python evaluate_deep_move.py')
+    else:
+        print('You want to run {} on {}, no this model or datasets!'.format(model, dataset))
+
+
+def evaluate_model_on_dataset(model, dataset):
+    print(model, dataset)
+    if model == 'deepmove' and dataset == 'foursquare':
+        os.system(r'cd D:\study\Bigscity-HMP-Toolkit\tasks && python run_loc_pred_evaluate.py')
+    else:
+        print('You want to evaluate {} on {}, no this model or datasets!'.format(model, dataset))
+
+
 _info = json.load(open('preset.json'))
 _datasets = _info['datasets']
 _models = _info['models']
@@ -88,5 +107,16 @@ if __name__ == '__main__':
         print('Datasets ready to run: ', datas2run)
         print('Models ready to run: ', models2run)
         print('Begin calculating:')
+
+        for model in models2run['predict']:
+            for dataset in datas2run:
+                run_model_on_dataset(model, dataset)
+                # evaluate_model_on_dataset(model, dataset)
+
+        for model in models2run['plan']:
+            for dataset in datas2run:
+                run_model_on_dataset(model, dataset)
+                # evaluate_model_on_dataset(model, dataset)
+
         print('Calculate finished! Begin generating report:')
         exit(0)

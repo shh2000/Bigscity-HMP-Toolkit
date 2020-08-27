@@ -14,8 +14,8 @@ from utils import RnnParameterData, run_simple, generate_history
 data = gen_data('deepMove', 'traj_foursquare')
 print('load data')
 parameters = RnnParameterData(data=data)
-model = TrajPreLocalAttnLong(parameters=parameters).cuda()
-criterion = nn.NLLLoss().cuda()
+model = TrajPreLocalAttnLong(parameters=parameters)
+criterion = nn.NLLLoss()
 optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=parameters.lr,
                            weight_decay=parameters.L2)
 scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', patience=parameters.lr_step,
