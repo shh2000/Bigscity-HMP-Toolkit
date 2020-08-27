@@ -28,14 +28,6 @@ data_test, test_idx = generate_history(parameters.data_neural, 'test')
 
 SAVE_PATH = '../model/save_model/'
 tmp_path = 'checkpoint/'
-import datetime
-
-x = str(datetime.datetime.today())
-x = x.replace('.', '')
-x = x.replace(':', '')
-x = x.replace('-', '')
-x = x.replace(' ', '')
-os.rename('../model/save_model/checkpoint/', '../model/save_model/checkpoint' + x + '/')
 os.mkdir(SAVE_PATH + tmp_path)
 print('start train')
 for epoch in range(parameters.epoch):
