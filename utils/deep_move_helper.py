@@ -173,6 +173,7 @@ def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2
     queue_len = len(run_queue)
 
     users_acc = {}
+    print(queue_len)
     for c in range(queue_len):
         optimizer.zero_grad()
         u, i = run_queue.popleft()

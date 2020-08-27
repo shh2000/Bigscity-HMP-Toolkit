@@ -1,9 +1,10 @@
-import sys,os
+import sys, os
 import numpy as np
 import time
 import torch
 import torch.nn as nn
 import torch.optim as optim
+
 # 将父目录加入 sys path TODO: 有没有更好的引用方式
 # sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.append('..')
@@ -17,9 +18,9 @@ parameters = RnnParameterData(data=data)
 model = TrajPreLocalAttnLong(parameters=parameters)
 criterion = nn.NLLLoss()
 optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=parameters.lr,
-                           weight_decay=parameters.L2)
+                       weight_decay=parameters.L2)
 scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', patience=parameters.lr_step,
-                                                    factor=parameters.lr_decay, threshold=1e-3)
+                                                 factor=parameters.lr_decay, threshold=1e-3)
 lr = parameters.lr
 
 data_train, train_idx = generate_history(parameters.data_neural, 'train')
@@ -27,16 +28,24 @@ data_test, test_idx = generate_history(parameters.data_neural, 'test')
 
 SAVE_PATH = '../model/save_model/'
 tmp_path = 'checkpoint/'
+import datetime
+
+x = str(datetime.datetime.today())
+x = x.replace('.', '')
+x = x.replace(':', '')
+x = x.replace('-', '')
+x = x.replace(' ', '')
+os.rename('../model/save_model/checkpoint/', '../model/save_model/checkpoint' + x + '/')
 os.mkdir(SAVE_PATH + tmp_path)
 print('start train')
 for epoch in range(parameters.epoch):
-    start_time = time.time()     
+    start_time = time.time()
     model, avg_loss = run_simple(data_train, train_idx, 'train', lr, parameters.clip, model, optimizer,
-                                         criterion, parameters.model_mode)
+                                 criterion, parameters.model_mode)
     print('==>Train Epoch:{:0>2d} Loss:{:.4f} lr:{}'.format(epoch, avg_loss, lr))
     metrics['train_loss'].append(avg_loss)
     avg_loss, avg_acc, users_acc = run_simple(data_test, test_idx, 'test', lr, parameters.clip, model,
-                                                  optimizer, criterion, parameters.model_mode)
+                                              optimizer, criterion, parameters.model_mode)
     print('==>Test Acc:{:.4f} Loss:{:.4f}'.format(avg_acc, avg_loss))
     metrics['valid_loss'].append(avg_loss)
     metrics['accuracy'].append(avg_acc)
@@ -56,7 +65,7 @@ for epoch in range(parameters.epoch):
     if lr <= 0.9 * 1e-5:
         break
 
-mid = np.argmax(metrics['accuracy']) # 这个不是最好的一次吗？
+mid = np.argmax(metrics['accuracy'])  # 这个不是最好的一次吗？
 avg_acc = metrics['accuracy'][mid]
 load_name_tmp = 'ep_' + str(mid) + '.m'
 model.load_state_dict(torch.load(SAVE_PATH + tmp_path + load_name_tmp))
