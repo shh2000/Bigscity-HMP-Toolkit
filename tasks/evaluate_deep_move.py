@@ -59,7 +59,6 @@ for user in data_train.keys():
 
     cnt += 1
 
-
 print('Entering Evaluation:')
 """
 import json

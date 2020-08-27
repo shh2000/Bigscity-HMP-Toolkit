@@ -56,7 +56,7 @@ class LocationPredEvaluate(object):
                     mark_list[i] = 1
                     ids_list.append(i)
                     break
-            if self.mode == "ACC" and len(ids_list) == self.k:
+            if len(ids_list) == self.k:
                 self.len_pred = self.k
                 break
         return ids_list
