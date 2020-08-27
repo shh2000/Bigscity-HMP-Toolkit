@@ -11,9 +11,9 @@ class RnnParameterData(object):
     def __init__(self, loc_emb_size=500, uid_emb_size=40, voc_emb_size=50, tim_emb_size=10, hidden_size=500,
                  lr=1e-3, lr_step=3, lr_decay=0.1, dropout_p=0.5, L2=1e-5, clip=5.0, optim='Adam',
                  history_mode='avg', attn_type='dot', epoch_max=2, rnn_type='LSTM', model_mode="attn_local_long",
-                 data=None):
+                 data=None, time_size = 48):
         self.data_neural = data['data_neural']
-        self.tim_size = 48
+        self.tim_size = time_size
         self.loc_size = data['loc_size'] # 需要知道一共有多少个 loc ?
         self.uid_size = data['uid_size']
         self.loc_emb_size = loc_emb_size
@@ -195,7 +195,7 @@ def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2
             scores = model(loc, tim, target_len) # 为什么这个 attn 不用考虑历史数据？
 
         if scores.data.size()[0] > target.data.size()[0]: # 这里的 score 是怎么回事 score 就是对 loc list 给出的置信度
-            # 讲道理应该不会出现这个情况，除非模型写错了
+            # 给 SimpleRNN 用
             scores = scores[-target.data.size()[0]:]
         loss = criterion(scores, target)
 
