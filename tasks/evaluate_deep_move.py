@@ -59,10 +59,6 @@ for user in data_train.keys():
 
     cnt += 1
 
-print('Entering Evaluation:')
-"""
-import json
-json.dump(evaluate_input, open('1.json', 'w'))"""
-lpt = lpem.LocationPredEvaluate(evaluate_input, 'DeepMove', "ACC", 2, data['loc_size'])
 
+lpt = lpem.LocationPredEvaluate(evaluate_input, "DeepMove", "ACC", 2, data['loc_size'])
 lpt.run()
