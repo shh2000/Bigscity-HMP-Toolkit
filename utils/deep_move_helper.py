@@ -158,7 +158,7 @@ def markov(parameters, candidate):
     avg_acc = np.mean([user_acc[u] for u in user_acc])
     return avg_acc, user_acc
 
-def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2=None, use_cuda):
+def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2=None, use_cuda=True):
     """mode=train: return model, avg_loss
        mode=test: return avg_loss,avg_acc,users_rnn_acc"""
     run_queue = None
@@ -340,3 +340,10 @@ def get_acc(target, scores):
         if t == p[0] and t > 0:
             acc[2] += 1
     return acc
+
+def transferModelToMode(model_name):
+    # there is two type deepMove
+    if model_name == 'simpleRNN':
+        return 'simple'
+    else:
+        return 'attn_local_long'

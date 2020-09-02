@@ -1,5 +1,5 @@
 from .DeepMove import TrajPreAttnAvgLongUser, TrajPreLocalAttnLong
-from .SimpleRNN import SimpleRNN
+from .simpleRNN import SimpleRNN
 
 __all__ = [
     "TrajPreAttnAvgLongUser",

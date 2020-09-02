@@ -18,10 +18,10 @@ from data_transfer import deepMoveTransfer
 #                 max_tim = node[1]
 #                 print(u, session, node)
 
-time_length = 12
+time_length = 72
 min_session_len = 5
-min_sessions = 2
-dataset_name = 'traj_gowalla'
+min_sessions = 5
+dataset_name = 'traj_foursquare-tky'
 with open('../data_extract/datasets/{}.json'.format(dataset_name), 'r') as f:
     data = json.load(f)
     data_transformed = deepMoveTransfer(data, min_session_len, min_sessions, time_length)

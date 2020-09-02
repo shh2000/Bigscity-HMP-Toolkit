@@ -5,17 +5,17 @@ import os
 
 
 def run_model_on_dataset(model, dataset):
-    if model == 'deepmove' and dataset == 'foursquare':
-        os.system(r'cd ..\tasks && python train_deep_move.py')
+    if model == 'deepMove' and dataset == 'foursquare':
+        os.system(r'cd ..\tasks && python train_traj_prediction.py {} {}'.format(model, dataset))
         return True
     else:
         print('You want to run {} on {}, no this model or datasets!'.format(model, dataset))
         return False
 
 
-def evaluate_model_on_dataset(model, model_type):
-    if model == 'deepmove' and model_type == 'predict':
-        os.system(r'cd ..\tasks && python evaluate_deep_move.py')
+def evaluate_model_on_dataset(model, dataset, model_type):
+    if model == 'deepmove' and dataset == 'foursquare' and model_type == 'predict':
+        os.system(r'cd ..\tasks && python evaluate_traj_prediction.py {} {}'.format(model, dataset))
     else:
         print('You want to evaluate {}-type model {}, no this model!'.format(model, model_type))
 
@@ -111,12 +111,12 @@ if __name__ == '__main__':
         for model in models2run['predict']:
             for dataset in datas2run:
                 if run_model_on_dataset(model, dataset):
-                    evaluate_model_on_dataset(model, 'predict')
+                    evaluate_model_on_dataset(model, dataset, 'predict')
 
         for model in models2run['plan']:
             for dataset in datas2run:
                 if run_model_on_dataset(model, dataset):
-                    evaluate_model_on_dataset(model, 'plan')
+                    evaluate_model_on_dataset(model, dataset, 'plan')
 
         print('Calculate finished! Begin generating report:')
 

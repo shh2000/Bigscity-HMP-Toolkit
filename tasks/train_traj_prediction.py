@@ -10,13 +10,37 @@ import torch.optim as optim
 sys.path.append('..')
 from model import TrajPreLocalAttnLong
 from data_transfer import gen_data
-from utils import RnnParameterData, run_simple, generate_history
+from utils import RnnParameterData, run_simple, generate_history, transferModelToMode
 
-data = gen_data('deepMove', 'traj_foursquare')
-print('load data')
+# get model name and datasets from command line 
+if len(sys.argv) != 3:
+    print('wrong format parameters!', file=sys.stderr)
+    exit(1)
+model_name = sys.argv[1] # deepMove / SimpleRNN
+datasets = sys.argv[2]
+model_mode = transferModelToMode(model_name)
 
-use_cuda = True
-parameters = RnnParameterData(data=data, use_cuda = use_cuda)
+# get transfer parameters
+print('Please input transfer parameters. If you want to use default parameters, just enter.')
+
+min_session_len = input('min session len:')
+min_session_len = 5 if min_session_len == '' else min_session_len
+min_sessions = input('min sessions:')
+min_sessions = 2 if min_sessions == '' else min_sessions
+time_length = input('time length:')
+time_length = 72 if time_length == '' else time_length
+if min_session_len == 5 and min_sessions == 2 and time_length == 72:
+    data = gen_data(model_name, datasets)
+else:    
+    data = gen_data(model_name, datasets, min_session_len, min_sessions, time_length) # 不传上述三个参数时，将使用默认数值
+print('data loaded')
+data_neural = data['data_neural']
+
+print('Please input model parameters. If you want to use default parameters, just enter.')
+use_cuda = input('use cuda(yes/no):')
+use_cuda = True if use_cuda == '' or use_cuda == 'yes' else False
+parameters = RnnParameterData(data=data, time_size=time_length, model_mode=model_mode, use_cuda = use_cuda)
+
 if use_cuda:
     model = TrajPreLocalAttnLong(parameters=parameters).cuda()
     criterion = nn.NLLLoss().cuda()
