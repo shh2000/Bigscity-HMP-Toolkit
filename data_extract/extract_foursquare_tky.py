@@ -54,4 +54,4 @@ for id in id2lines.keys():
 
     item['geometry'] = geometry
     df['features'].append(item)
-json.dump(df, open('datasets/traj_foursquare-tky.json', 'w'))
+json.dump(df, open('datasets/foursquare.json', 'w'))
