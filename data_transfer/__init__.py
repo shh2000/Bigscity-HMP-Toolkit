@@ -11,7 +11,7 @@ def gen_data(model_name, dataset_name, *args):
             with open('../data_transfer/datasets/deepMove_{}.json'.format(dataset_name), 'r') as f:
                 data = json.load(f)
                 return data
-        with open('../data_extract/datasets/' + dataset_name + '.json', 'r') as f:
+        with open('../data_extract/datasets/traj_' + dataset_name + '.json', 'r') as f:
             data = json.load(f)
             if use_cache:
                 data_transformed = deepMoveTransfer(data)
