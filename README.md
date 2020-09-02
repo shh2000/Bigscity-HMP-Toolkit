@@ -8,3 +8,8 @@ a toolkit for Location Prediction and Route Planning based on torch
 * sklearn
 * geohash2
 
+#### 利用到的开源工具或数据
+
+* gowalla数据集
+* foursquare数据集（checkins.dat）
+* foursquare数据集（[kaggle](https://www.kaggle.com/chetanism/foursquare-nyc-and-tokyo-checkin-dataset)）

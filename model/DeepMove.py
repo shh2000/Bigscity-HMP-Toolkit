@@ -7,77 +7,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
 
-
-# ############# simple rnn model ####################### #
-class TrajPreSimple(nn.Module):
-    """baseline rnn model"""
-
-    def __init__(self, parameters):
-        super(TrajPreSimple, self).__init__()
-        self.loc_size = parameters.loc_size
-        self.loc_emb_size = parameters.loc_emb_size
-        self.tim_size = parameters.tim_size
-        self.tim_emb_size = parameters.tim_emb_size
-        self.hidden_size = parameters.hidden_size
-        self.use_cuda = parameters.use_cuda
-        self.rnn_type = parameters.rnn_type
-
-        self.emb_loc = nn.Embedding(self.loc_size, self.loc_emb_size)
-        self.emb_tim = nn.Embedding(self.tim_size, self.tim_emb_size)
-
-        input_size = self.loc_emb_size + self.tim_emb_size
-
-        if self.rnn_type == 'GRU':
-            self.rnn = nn.GRU(input_size, self.hidden_size, 1)
-        elif self.rnn_type == 'LSTM':
-            self.rnn = nn.LSTM(input_size, self.hidden_size, 1)
-        elif self.rnn_type == 'RNN':
-            self.rnn = nn.RNN(input_size, self.hidden_size, 1)
-        self.init_weights()
-
-        self.fc = nn.Linear(self.hidden_size, self.loc_size)
-        self.dropout = nn.Dropout(p=parameters.dropout_p)
-
-    def init_weights(self):
-        """
-        Here we reproduce Keras default initialization weights for consistency with Keras version
-        """
-        ih = (param.data for name, param in self.named_parameters() if 'weight_ih' in name)
-        hh = (param.data for name, param in self.named_parameters() if 'weight_hh' in name)
-        b = (param.data for name, param in self.named_parameters() if 'bias' in name)
-
-        for t in ih:
-            nn.init.xavier_uniform(t)
-        for t in hh:
-            nn.init.orthogonal(t)
-        for t in b:
-            nn.init.constant(t, 0)
-
-    def forward(self, loc, tim):
-        h1 = Variable(torch.zeros(1, 1, self.hidden_size))
-        c1 = Variable(torch.zeros(1, 1, self.hidden_size))
-        if self.use_cuda:
-            h1 = h1.cuda()
-            c1 = c1.cuda()
-
-        loc_emb = self.emb_loc(loc)
-        tim_emb = self.emb_tim(tim)
-        x = torch.cat((loc_emb, tim_emb), 2)
-        x = self.dropout(x)
-
-        if self.rnn_type == 'GRU' or self.rnn_type == 'RNN':
-            out, h1 = self.rnn(x, h1)
-        elif self.rnn_type == 'LSTM':
-            out, (h1, c1) = self.rnn(x, (h1, c1))
-        out = out.squeeze(1)
-        out = F.selu(out)
-        out = self.dropout(out)
-
-        y = self.fc(out)
-        score = F.log_softmax(y)  # calculate loss by NLLoss
-        return score
-
-
 # ############# rnn model with attention ####################### #
 class Attn(nn.Module):
     """Attention Module. Heavily borrowed from Practical Pytorch
@@ -98,7 +27,7 @@ class Attn(nn.Module):
     def forward(self, out_state, history):
         seq_len = history.size()[0]
         state_len = out_state.size()[0]
-        attn_energies = Variable(torch.zeros(state_len, seq_len)).cuda()
+        attn_energies = Variable(torch.zeros(state_len, seq_len))
         for i in range(state_len):
             for j in range(seq_len):
                 attn_energies[i, j] = self.score(out_state[i], history[j])
@@ -173,8 +102,8 @@ class TrajPreAttnAvgLongUser(nn.Module):
         h1 = Variable(torch.zeros(1, 1, self.hidden_size))
         c1 = Variable(torch.zeros(1, 1, self.hidden_size))
         if self.use_cuda:
-            h1 = h1.cuda()
-            c1 = c1.cuda()
+            h1 = h1
+            c1 = c1
 
         loc_emb = self.emb_loc(loc)
         tim_emb = self.emb_tim(tim)
@@ -184,8 +113,8 @@ class TrajPreAttnAvgLongUser(nn.Module):
         loc_emb_history = self.emb_loc(history_loc).squeeze(1) # 去掉维数为 1 的维度
         tim_emb_history = self.emb_tim(history_tim).squeeze(1)
         count = 0
-        loc_emb_history2 = Variable(torch.zeros(len(history_count), loc_emb_history.size()[-1])).cuda()
-        tim_emb_history2 = Variable(torch.zeros(len(history_count), tim_emb_history.size()[-1])).cuda()
+        loc_emb_history2 = Variable(torch.zeros(len(history_count), loc_emb_history.size()[-1]))
+        tim_emb_history2 = Variable(torch.zeros(len(history_count), tim_emb_history.size()[-1]))
         for i, c in enumerate(history_count):
             if c == 1:
                 tmp = loc_emb_history[count].unsqueeze(0) # shape: 1 * 500 
@@ -275,10 +204,10 @@ class TrajPreLocalAttnLong(nn.Module):
         c1 = Variable(torch.zeros(1, 1, self.hidden_size))
         c2 = Variable(torch.zeros(1, 1, self.hidden_size))
         if self.use_cuda:
-            h1 = h1.cuda()
-            h2 = h2.cuda()
-            c1 = c1.cuda()
-            c2 = c2.cuda()
+            h1 = h1
+            h2 = h2
+            c1 = c1
+            c2 = c2
 
         loc_emb = self.emb_loc(loc)
         tim_emb = self.emb_tim(tim)

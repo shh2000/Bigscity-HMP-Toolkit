@@ -7,13 +7,14 @@ import numpy as np
 import pickle
 from collections import deque, Counter
 
+
 class RnnParameterData(object):
     def __init__(self, loc_emb_size=500, uid_emb_size=40, voc_emb_size=50, tim_emb_size=10, hidden_size=500,
                  lr=1e-3, lr_step=3, lr_decay=0.1, dropout_p=0.5, L2=1e-5, clip=5.0, optim='Adam',
                  history_mode='avg', attn_type='dot', epoch_max=2, rnn_type='LSTM', model_mode="attn_local_long",
-                 data=None):
+                 data=None, time_size = 48, use_cuda = True):
         self.data_neural = data['data_neural']
-        self.tim_size = 48
+        self.tim_size = time_size
         self.loc_size = data['loc_size'] # 需要知道一共有多少个 loc ?
         self.uid_size = data['uid_size']
         self.loc_emb_size = loc_emb_size
@@ -23,7 +24,7 @@ class RnnParameterData(object):
         self.hidden_size = hidden_size
         self.epoch = epoch_max
         self.dropout_p = dropout_p
-        self.use_cuda = True
+        self.use_cuda = use_cuda
         self.lr = lr
         self.lr_step = lr_step
         self.lr_decay = lr_decay
@@ -34,6 +35,7 @@ class RnnParameterData(object):
         self.rnn_type = rnn_type
         self.history_mode = history_mode
         self.model_mode = model_mode
+
 
 def generate_history(data_neural, mode):
     # use this to gen train data and test data
@@ -74,7 +76,7 @@ def generate_history(data_neural, mode):
                     history_count.append(1)
                     last_t = t
                     count = 1
-            history_loc = np.reshape(np.array([s[0] for s in history]), (len(history), 1)) # 把多个 history 路径合并成一个？
+            history_loc = np.reshape(np.array([s[0] for s in history]), (len(history), 1))  # 把多个 history 路径合并成一个？
             history_tim = np.reshape(np.array([s[1] for s in history]), (len(history), 1))
             trace['history_loc'] = Variable(torch.LongTensor(history_loc))
             trace['history_tim'] = Variable(torch.LongTensor(history_tim))
@@ -83,12 +85,13 @@ def generate_history(data_neural, mode):
             loc_tim.extend([(s[0], s[1]) for s in session[:-1]])
             loc_np = np.reshape(np.array([s[0] for s in loc_tim]), (len(loc_tim), 1))
             tim_np = np.reshape(np.array([s[1] for s in loc_tim]), (len(loc_tim), 1))
-            trace['loc'] = Variable(torch.LongTensor(loc_np)) # loc 会与 history loc 有重合， loc 的前半部分为 history loc
+            trace['loc'] = Variable(torch.LongTensor(loc_np))  # loc 会与 history loc 有重合， loc 的前半部分为 history loc
             trace['tim'] = Variable(torch.LongTensor(tim_np))
-            trace['target'] = Variable(torch.LongTensor(target)) # target 会与 loc 有一段的重合，只有 target 的最后一位 loc 没有
+            trace['target'] = Variable(torch.LongTensor(target))  # target 会与 loc 有一段的重合，只有 target 的最后一位 loc 没有
             data_train[u][i] = trace
         train_idx[u] = train_id
     return data_train, train_idx
+
 
 def markov(parameters, candidate):
     validation = {}
@@ -155,7 +158,7 @@ def markov(parameters, candidate):
     avg_acc = np.mean([user_acc[u] for u in user_acc])
     return avg_acc, user_acc
 
-def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2=None):
+def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2=None, use_cuda):
     """mode=train: return model, avg_loss
        mode=test: return avg_loss,avg_acc,users_rnn_acc"""
     run_queue = None
@@ -169,33 +172,44 @@ def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2
     queue_len = len(run_queue)
 
     users_acc = {}
+    print(queue_len)
     for c in range(queue_len):
         optimizer.zero_grad()
         u, i = run_queue.popleft()
         print(u, i)
         if u not in users_acc:
             users_acc[u] = [0, 0]
-        loc = data[u][i]['loc'].cuda()
-        tim = data[u][i]['tim'].cuda()
-        target = data[u][i]['target'].cuda()
-        uid = Variable(torch.LongTensor([int(u)])).cuda()
+        if use_cuda:
+            loc = data[u][i]['loc'].cuda()
+            tim = data[u][i]['tim'].cuda()
+            target = data[u][i]['target'].cuda()
+            uid = Variable(torch.LongTensor([int(u)])).cuda()
+        else:
+            loc = data[u][i]['loc']
+            tim = data[u][i]['tim']
+            target = data[u][i]['target']
+            uid = Variable(torch.LongTensor([int(u)]))
 
         if 'attn' in mode2:
-            history_loc = data[u][i]['history_loc'].cuda()
-            history_tim = data[u][i]['history_tim'].cuda()
+            if use_cuda:
+                history_loc = data[u][i]['history_loc'].cuda()
+                history_tim = data[u][i]['history_tim'].cuda()
+            else:
+                history_loc = data[u][i]['history_loc']
+                history_tim = data[u][i]['history_tim']
 
         if mode2 in ['simple', 'simple_long']:
             scores = model(loc, tim)
-        elif mode2 == 'attn_avg_long_user': # use this
+        elif mode2 == 'attn_avg_long_user':  # use this
             history_count = data[u][i]['history_count']
             target_len = target.data.size()[0]
             scores = model(loc, tim, history_loc, history_tim, history_count, uid, target_len)
         elif mode2 == 'attn_local_long':
             target_len = target.data.size()[0]
-            scores = model(loc, tim, target_len) # 为什么这个 attn 不用考虑历史数据？
+            scores = model(loc, tim, target_len)  # 为什么这个 attn 不用考虑历史数据？
 
         if scores.data.size()[0] > target.data.size()[0]: # 这里的 score 是怎么回事 score 就是对 loc list 给出的置信度
-            # 讲道理应该不会出现这个情况，除非模型写错了
+            # 给 SimpleRNN 用
             scores = scores[-target.data.size()[0]:]
         loss = criterion(scores, target)
 
@@ -228,6 +242,7 @@ def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2
         avg_acc = np.mean([users_rnn_acc[x] for x in users_rnn_acc])
         return avg_loss, avg_acc, users_rnn_acc
 
+
 def generate_queue(train_idx, mode, mode2):
     """return a deque. You must use it by train_queue.popleft()"""
     user = list(train_idx.keys())
@@ -253,6 +268,7 @@ def generate_queue(train_idx, mode, mode2):
             for i in train_idx[u]:
                 train_queue.append((u, i))
     return train_queue
+
 
 def generate_input_long_history(data_neural, mode, candidate=None):
     data_train = {}
@@ -291,7 +307,7 @@ def generate_input_long_history(data_neural, mode, candidate=None):
                     last_t = t
                     count = 1
 
-            history_loc = np.reshape(np.array([s[0] for s in history]), (len(history), 1)) # 把多个 history 路径合并成一个？
+            history_loc = np.reshape(np.array([s[0] for s in history]), (len(history), 1))  # 把多个 history 路径合并成一个？
             history_tim = np.reshape(np.array([s[1] for s in history]), (len(history), 1))
             trace['history_loc'] = Variable(torch.LongTensor(history_loc))
             trace['history_tim'] = Variable(torch.LongTensor(history_tim))
@@ -301,12 +317,13 @@ def generate_input_long_history(data_neural, mode, candidate=None):
             loc_tim.extend([(s[0], s[1]) for s in session[:-1]])
             loc_np = np.reshape(np.array([s[0] for s in loc_tim]), (len(loc_tim), 1))
             tim_np = np.reshape(np.array([s[1] for s in loc_tim]), (len(loc_tim), 1))
-            trace['loc'] = Variable(torch.LongTensor(loc_np)) # loc 会与 history loc 有重合， loc 的前半部分为 history loc
+            trace['loc'] = Variable(torch.LongTensor(loc_np))  # loc 会与 history loc 有重合， loc 的前半部分为 history loc
             trace['tim'] = Variable(torch.LongTensor(tim_np))
-            trace['target'] = Variable(torch.LongTensor(target)) # target 会与 loc 有一段的重合，只有 target 的最后一位 loc 没有
+            trace['target'] = Variable(torch.LongTensor(target))  # target 会与 loc 有一段的重合，只有 target 的最后一位 loc 没有
             data_train[u][i] = trace
         train_idx[u] = train_id
     return data_train, train_idx
+
 
 def get_acc(target, scores):
     """target and scores are torch cuda Variable"""
