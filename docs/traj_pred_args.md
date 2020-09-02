@@ -1,5 +1,9 @@
 >此文件负责说明 trajectory prediction 任务开放给用户自定义的一些参数
 
+#### 参数传递方法
+
+除 datasets 与 model_name 通过 parse_args.py 传递之外，其他的通过命令行请求用户输入，并支持回车使用默认值。
+
 #### transfer 相关参数
 
 * min_session_len：轨迹最短长度。

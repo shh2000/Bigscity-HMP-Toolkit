@@ -12,12 +12,12 @@ class Attn(nn.Module):
     """Attention Module. Heavily borrowed from Practical Pytorch
     https://github.com/spro/practical-pytorch/tree/master/seq2seq-translation"""
 
-    def __init__(self, method, hidden_size):
+    def __init__(self, method, hidden_size, use_cuda):
         super(Attn, self).__init__()
 
         self.method = method
         self.hidden_size = hidden_size
-
+        self.use_cuda = use_cuda
         if self.method == 'general':
             self.attn = nn.Linear(self.hidden_size, self.hidden_size)
         elif self.method == 'concat':
@@ -27,7 +27,10 @@ class Attn(nn.Module):
     def forward(self, out_state, history):
         seq_len = history.size()[0]
         state_len = out_state.size()[0]
-        attn_energies = Variable(torch.zeros(state_len, seq_len))
+        if self.use_cuda:
+            attn_energies = Variable(torch.zeros(state_len, seq_len)).cuda()
+        else:
+            attn_energies = Variable(torch.zeros(state_len, seq_len))
         for i in range(state_len):
             for j in range(seq_len):
                 attn_energies[i, j] = self.score(out_state[i], history[j])
@@ -69,7 +72,7 @@ class TrajPreAttnAvgLongUser(nn.Module):
         self.emb_uid = nn.Embedding(self.uid_size, self.uid_emb_size)
 
         input_size = self.loc_emb_size + self.tim_emb_size
-        self.attn = Attn(self.attn_type, self.hidden_size)
+        self.attn = Attn(self.attn_type, self.hidden_size, self.use_cuda)
         self.fc_attn = nn.Linear(input_size, self.hidden_size)
 
         if self.rnn_type == 'GRU':
@@ -102,8 +105,8 @@ class TrajPreAttnAvgLongUser(nn.Module):
         h1 = Variable(torch.zeros(1, 1, self.hidden_size))
         c1 = Variable(torch.zeros(1, 1, self.hidden_size))
         if self.use_cuda:
-            h1 = h1
-            c1 = c1
+            h1 = h1.cuda()
+            c1 = c1.cuda()
 
         loc_emb = self.emb_loc(loc)
         tim_emb = self.emb_tim(tim)
@@ -113,8 +116,12 @@ class TrajPreAttnAvgLongUser(nn.Module):
         loc_emb_history = self.emb_loc(history_loc).squeeze(1) # 去掉维数为 1 的维度
         tim_emb_history = self.emb_tim(history_tim).squeeze(1)
         count = 0
-        loc_emb_history2 = Variable(torch.zeros(len(history_count), loc_emb_history.size()[-1]))
-        tim_emb_history2 = Variable(torch.zeros(len(history_count), tim_emb_history.size()[-1]))
+        if self.use_cuda:
+            loc_emb_history2 = Variable(torch.zeros(len(history_count), loc_emb_history.size()[-1])).cuda()
+            tim_emb_history2 = Variable(torch.zeros(len(history_count), tim_emb_history.size()[-1])).cuda()
+        else:
+            loc_emb_history2 = Variable(torch.zeros(len(history_count), loc_emb_history.size()[-1]))
+            tim_emb_history2 = Variable(torch.zeros(len(history_count), tim_emb_history.size()[-1]))
         for i, c in enumerate(history_count):
             if c == 1:
                 tmp = loc_emb_history[count].unsqueeze(0) # shape: 1 * 500 
@@ -166,7 +173,7 @@ class TrajPreLocalAttnLong(nn.Module):
         self.emb_tim = nn.Embedding(self.tim_size, self.tim_emb_size)
 
         input_size = self.loc_emb_size + self.tim_emb_size
-        self.attn = Attn(self.attn_type, self.hidden_size)
+        self.attn = Attn(self.attn_type, self.hidden_size, self.use_cuda)
         self.fc_attn = nn.Linear(input_size, self.hidden_size)
 
         if self.rnn_type == 'GRU':
@@ -204,10 +211,10 @@ class TrajPreLocalAttnLong(nn.Module):
         c1 = Variable(torch.zeros(1, 1, self.hidden_size))
         c2 = Variable(torch.zeros(1, 1, self.hidden_size))
         if self.use_cuda:
-            h1 = h1
-            h2 = h2
-            c1 = c1
-            c2 = c2
+            h1 = h1.cuda()
+            h2 = h2.cuda()
+            c1 = c1.cuda()
+            c2 = c2.cuda()
 
         loc_emb = self.emb_loc(loc)
         tim_emb = self.emb_tim(tim)
