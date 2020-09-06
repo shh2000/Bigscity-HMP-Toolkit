@@ -5,7 +5,7 @@ import os
 
 
 def run_model_on_dataset(model, dataset):
-    if model == 'deepMove' and dataset == 'foursquare':
+    if model == 'deepMove' and dataset == 'foursquare-tky':
         os.system(r'cd ..\tasks && python train_traj_prediction.py {} {}'.format(model, dataset))
         return True
     else:

@@ -172,11 +172,11 @@ def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2
     queue_len = len(run_queue)
 
     users_acc = {}
-    print(queue_len)
+    print('queue_len', queue_len)
+    verbose = 100
     for c in range(queue_len):
         optimizer.zero_grad()
         u, i = run_queue.popleft()
-        print(u, i)
         if u not in users_acc:
             users_acc[u] = [0, 0]
         if use_cuda:
@@ -229,7 +229,8 @@ def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2
             acc = get_acc(target, scores)
             users_acc[u][1] += acc[2]
         total_loss.append(loss.data.cpu().numpy().tolist())
-        print('now at: ', c)
+        if c % verbose == 0:
+            print('finish {}/{}'.format(c, queue_len))
 
     avg_loss = np.mean(total_loss, dtype=np.float64)
     if mode == 'train':
