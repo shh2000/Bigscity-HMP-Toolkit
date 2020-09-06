@@ -11,7 +11,7 @@ from collections import deque, Counter
 class RnnParameterData(object):
     def __init__(self, loc_emb_size=500, uid_emb_size=40, voc_emb_size=50, tim_emb_size=10, hidden_size=500,
                  lr=1e-3, lr_step=3, lr_decay=0.1, dropout_p=0.5, L2=1e-5, clip=5.0, optim='Adam',
-                 history_mode='avg', attn_type='dot', epoch_max=2, rnn_type='LSTM', model_mode="attn_local_long",
+                 history_mode='avg', attn_type='dot', epoch_max=1, rnn_type='LSTM', model_mode="attn_local_long",
                  data=None, time_size = 48, use_cuda = True):
         self.data_neural = data['data_neural']
         self.tim_size = time_size
