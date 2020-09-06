@@ -345,5 +345,7 @@ def transferModelToMode(model_name):
     # there is two type deepMove
     if model_name == 'simpleRNN':
         return 'simple'
-    else:
+    elif model_name == 'deepMove':
         return 'attn_local_long'
+    else:
+        return 'default'
