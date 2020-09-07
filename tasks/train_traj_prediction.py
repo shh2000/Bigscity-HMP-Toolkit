@@ -60,6 +60,7 @@ SAVE_PATH = '../model/save_model/'
 tmp_path = 'checkpoint/'
 os.mkdir(SAVE_PATH + tmp_path)
 print('start train')
+metrics = {}
 for epoch in range(parameters.epoch):
     start_time = time.time()
     model, avg_loss = run_simple(data_train, train_idx, 'train', lr, parameters.clip, model, optimizer,
