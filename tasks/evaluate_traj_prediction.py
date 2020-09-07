@@ -17,7 +17,7 @@ from evaluate import loc_pred_evaluate_model as lpem
 if len(sys.argv) != 3:
     print('wrong format parameters!', file=sys.stderr)
     exit(1)
-model_name = sys.argv[1] # deepMove / SimpleRNN
+model_name = sys.argv[1] # deepMove / SimpleRNN / FPMC
 datasets = sys.argv[2]
 model_mode = transferModelToMode(model_name)
 
