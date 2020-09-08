@@ -361,7 +361,7 @@ def run(data_loader, model, optimizer, criterion, model_mode, lr, clip, batch_si
             # use accumulating gradients
             # one batch, one step
             optimizer.zero_grad()
-            for i in range(batch_size):
+            for i in range(len(loc)):
                 scores = model(loc[i], tim[i], target_len[i])
                 loss = criterion(scores, target[i])
                 loss.backward()
