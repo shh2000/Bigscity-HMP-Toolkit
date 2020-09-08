@@ -1,8 +1,7 @@
 import sys
+
 sys.path.append('..')
 from evaluate import loc_pred_evaluate_model as lpem
-
-
 
 if __name__ == '__main__':
     data = '{' \
