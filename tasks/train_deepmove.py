@@ -31,7 +31,6 @@ data = gen_data(model_name, datasets, config['transfer']['min_session_len'], con
 print('data loaded')
 data_neural = data['data_neural']
 
-print('Please input model parameters. If you want to use default parameters, just enter.')
 use_cuda = config['train']['use_cuda']
 parameters = RnnParameterData(data=data, time_size=time_length, model_mode=model_mode, use_cuda = use_cuda)
 
@@ -56,7 +55,7 @@ os.mkdir(SAVE_PATH + tmp_path)
 print('start train')
 ## tran parameter
 batch_size = 10
-num_workers = 4
+num_workers = 0
 total_batch = train_dataset.__len__() / batch_size
 metrics = {}
 metrics['train_loss'] = []
