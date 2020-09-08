@@ -1,5 +1,13 @@
 {
     "transfer": {
+        "min_session_len": 5,
+        "min_sessions": 2,
+        "time_length": 72
+    },
+    "train": {
+        "use_cuda": true
+    },
+    "evaluate": {
         
     }
 }

@@ -38,9 +38,11 @@ class RnnParameterData(object):
 
 
 def generate_history(data_neural, mode):
-    # use this to gen train data and test data
-    data_train = {}
-    train_idx = {}
+    '''
+    return list of data
+    (loc, tim, history_loc, hisory_tim, history_count, uid, target)
+    '''
+    data = []
     user_set = data_neural.keys()
     for u in user_set:
         if mode == 'test' and len(data_neural[u][mode]) == 0:
@@ -48,7 +50,6 @@ def generate_history(data_neural, mode):
             continue
         sessions = data_neural[u]['sessions']
         train_id = data_neural[u][mode]
-        data_train[u] = {}
         for c, i in enumerate(train_id):
             trace = {}
             if mode == 'train' and c == 0:
@@ -88,9 +89,8 @@ def generate_history(data_neural, mode):
             trace['loc'] = Variable(torch.LongTensor(loc_np))  # loc 会与 history loc 有重合， loc 的前半部分为 history loc
             trace['tim'] = Variable(torch.LongTensor(tim_np))
             trace['target'] = Variable(torch.LongTensor(target))  # target 会与 loc 有一段的重合，只有 target 的最后一位 loc 没有
-            data_train[u][i] = trace
-        train_idx[u] = train_id
-    return data_train, train_idx
+            data.append(trace)
+    return data
 
 
 def markov(parameters, candidate):
@@ -350,3 +350,32 @@ def transferModelToMode(model_name):
         return 'attn_local_long'
     else:
         return 'default'
+
+
+def run(data_loader, model, optimizer, criterion, model_mode, lr, clip, use_cuda):
+    model.train(True)
+    total_loss = []
+    for loc, tim, history_loc, history_tim, history_count, uid, target_len, target in data_loader:
+        optimizer.zero_grad()
+        if use_cuda:
+            loc = loc.cuda()
+            tim = tim.cuda()
+            target = target.cuda()
+            uid = uid.cuda()
+            history_loc = history_loc.cuda()
+            history_tim = history_tim.cuda()
+        if model_mode == 'attn_local_long':
+            scores = model(loc, tim, target_len)
+        loss = criterion(scores, target)
+        loss.backward()
+        try:
+            torch.nn.utils.clip_grad_norm(model.parameters(), clip)
+            for p in model.parameters():
+                if p.requires_grad:
+                    p.data.add_(-lr, p.grad.data)
+        except:
+            pass
+        optimizer.step()
+        total_loss.append(loss.data.cpu().numpy().tolist())
+    avg_loss = np.mean(total_loss, dtype=np.float64)
+    return model, avg_loss
