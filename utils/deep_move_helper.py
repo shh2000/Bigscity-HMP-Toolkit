@@ -352,23 +352,26 @@ def transferModelToMode(model_name):
         return 'default'
 
 
-def run(data_loader, model, optimizer, criterion, model_mode, lr, clip, use_cuda):
+def run(data_loader, model, optimizer, criterion, model_mode, lr, clip, batch_size):
     model.train(True)
     total_loss = []
-    for loc, tim, history_loc, history_tim, history_count, uid, target_len, target in data_loader:
-        optimizer.zero_grad()
-        if model_mode == 'attn_local_long':
-            scores = model(loc, tim, target_len)
-        loss = criterion(scores, target)
-        loss.backward()
-        try:
-            torch.nn.utils.clip_grad_norm(model.parameters(), clip)
-            for p in model.parameters():
-                if p.requires_grad:
-                    p.data.add_(-lr, p.grad.data)
-        except:
-            pass
-        optimizer.step()
-        total_loss.append(loss.data.cpu().numpy().tolist())
+    if model_mode == 'attn_local_long':
+        for loc, tim, history_loc, history_tim, history_count, uid, target_len, target in data_loader:
+            # use accumulating gradients
+            # one batch, one step
+            optimizer.zero_grad()
+            for i in range(batch_size):
+                scores = model(loc[i], tim[i], target_len[i])
+                loss = criterion(scores, target)
+                loss.backward()
+                total_loss.append(loss.data.cpu().numpy().tolist())
+                try:
+                    torch.nn.utils.clip_grad_norm(model.parameters(), clip)
+                    for p in model.parameters():
+                        if p.requires_grad:
+                            p.data.add_(-lr, p.grad.data)
+                except:
+                    pass
+            optimizer.step()
     avg_loss = np.mean(total_loss, dtype=np.float64)
     return model, avg_loss
