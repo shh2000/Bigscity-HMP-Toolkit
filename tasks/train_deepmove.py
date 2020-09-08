@@ -47,8 +47,8 @@ scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', patience=para
                                                  factor=parameters.lr_decay, threshold=1e-3)
 lr = parameters.lr
 # use dataset
-train_dataset = DeepMoveDataset(data_neural, 'train')
-test_dataset = DeepMoveDataset(data_neural, 'test')
+train_dataset = DeepMoveDataset(data_neural, 'train', use_cuda)
+test_dataset = DeepMoveDataset(data_neural, 'test', use_cuda)
 
 SAVE_PATH = '../model/save_model/'
 tmp_path = 'checkpoint/'

@@ -357,13 +357,6 @@ def run(data_loader, model, optimizer, criterion, model_mode, lr, clip, use_cuda
     total_loss = []
     for loc, tim, history_loc, history_tim, history_count, uid, target_len, target in data_loader:
         optimizer.zero_grad()
-        if use_cuda:
-            loc = loc.cuda()
-            tim = tim.cuda()
-            target = target.cuda()
-            uid = uid.cuda()
-            history_loc = history_loc.cuda()
-            history_tim = history_tim.cuda()
         if model_mode == 'attn_local_long':
             scores = model(loc, tim, target_len)
         loss = criterion(scores, target)

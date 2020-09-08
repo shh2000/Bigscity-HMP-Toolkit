@@ -4,11 +4,20 @@ from torch.autograd import Variable
 import numpy as np
 
 class DeepMoveDataset(Dataset):
-    def __init__(self, data, mode):
+    def __init__(self, data, mode, use_cuda):
         self.data = self.parseData(data, mode)
+        self.use_cuda = use_cuda
 
     def __getitem__(self, index):
         item = self.data[index]
+        if self.use_cuda:
+            item['loc'] = item['loc'].cuda()
+            item['tim'] = item['tim'].cuda()
+            item['history_loc'] = item['history_loc'].cuda()
+            item['history_tim'] = item['history_tim'].cuda()
+            item['uid'] = item['uid'].cuda()
+            item['target'] = item['target'].cuda()
+            
         return item
         # return item['loc'], item['tim'], item['history_loc'], item['history_tim'], item['history_count'], item['uid'], item['target']
 
