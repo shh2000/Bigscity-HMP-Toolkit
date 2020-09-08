@@ -17,7 +17,6 @@ class DeepMoveDataset(Dataset):
             item['history_tim'] = item['history_tim'].cuda()
             item['uid'] = item['uid'].cuda()
             item['target'] = item['target'].cuda()
-            
         return item
         # return item['loc'], item['tim'], item['history_loc'], item['history_tim'], item['history_count'], item['uid'], item['target']
 
