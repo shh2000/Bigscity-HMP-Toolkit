@@ -352,17 +352,18 @@ def transferModelToMode(model_name):
         return 'default'
 
 
-def run(data_loader, model, optimizer, criterion, model_mode, lr, clip, batch_size):
+def run(data_loader, model, optimizer, criterion, model_mode, lr, clip, batch_size, total_batch, verbose):
     model.train(True)
     total_loss = []
     if model_mode == 'attn_local_long':
+        cnt = 0
         for loc, tim, history_loc, history_tim, history_count, uid, target_len, target in data_loader:
             # use accumulating gradients
             # one batch, one step
             optimizer.zero_grad()
             for i in range(batch_size):
                 scores = model(loc[i], tim[i], target_len[i])
-                loss = criterion(scores, target)
+                loss = criterion(scores, target[i])
                 loss.backward()
                 total_loss.append(loss.data.cpu().numpy().tolist())
                 try:
@@ -373,5 +374,8 @@ def run(data_loader, model, optimizer, criterion, model_mode, lr, clip, batch_si
                 except:
                     pass
             optimizer.step()
+            cnt += 1
+            if cnt % verbose == 0:
+                print('finish batch {}/{}'.format(cnt, total_batch))
     avg_loss = np.mean(total_loss, dtype=np.float64)
     return model, avg_loss
