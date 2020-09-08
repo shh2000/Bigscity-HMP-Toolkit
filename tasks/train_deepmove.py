@@ -83,7 +83,7 @@ def collactor(batch):
 for epoch in range(parameters.epoch):
     ## train stage
     train_data_loader = DataLoader(dataset = train_dataset, batch_size = batch_size, num_workers = num_workers, collate_fn = collactor)
-    model, avg_loss = run(train_data_loader, model, optimizer, criterion, model_mode, lr, parameters.clip, parameters.use_cuda)
+    model, avg_loss = run(train_data_loader, model, optimizer, criterion, model_mode, lr, parameters.clip, batch_size)
     print('==>Train Epoch:{:0>2d} Loss:{:.4f} lr:{}'.format(epoch, avg_loss, lr))
     metrics['train_loss'].append(avg_loss)
     ## test stage
