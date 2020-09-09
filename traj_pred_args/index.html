@@ -9,7 +9,7 @@
   
   
   <link rel="shortcut icon" href="../img/favicon.ico">
-  <title>About - HMP package docs</title>
+  <title>traj_pred - HMP package docs</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700|Roboto+Slab:400,700|Inconsolata:400,700" />
 
   <link rel="stylesheet" href="../css/theme.css" />
@@ -18,8 +18,8 @@
   
   <script>
     // Current page data
-    var mkdocs_page_name = "About";
-    var mkdocs_page_input_path = "about.md";
+    var mkdocs_page_name = "traj_pred";
+    var mkdocs_page_input_path = "traj_pred_args.md";
     var mkdocs_page_url = null;
   </script>
   
@@ -51,24 +51,18 @@
                     <li class="toctree-l1"><a class="reference internal" href="..">Home</a>
                     </li>
                 </ul>
-                <ul class="current">
-                    <li class="toctree-l1 current"><a class="reference internal current" href="./">About</a>
-    <ul class="current">
-    <li class="toctree-l2"><a class="reference internal" href="#commands">Commands</a>
-    </li>
-    <li class="toctree-l2"><a class="reference internal" href="#project-layout">Project layout</a>
-    </li>
-    <li class="toctree-l2"><a class="reference internal" href="#about">About</a>
-    </li>
-    </ul>
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../about/">About</a>
                     </li>
                 </ul>
                 <ul>
                     <li class="toctree-l1"><a class="" href="../deeomove_doc.md">Deepmove</a>
                     </li>
                 </ul>
-                <ul>
-                    <li class="toctree-l1"><a class="reference internal" href="../traj_pred_args/">traj_pred</a>
+                <ul class="current">
+                    <li class="toctree-l1 current"><a class="reference internal current" href="./">traj_pred</a>
+    <ul class="current">
+    </ul>
                     </li>
                 </ul>
                 <ul>
@@ -96,7 +90,7 @@
     
       
     
-    <li>About</li>
+    <li>traj_pred</li>
     <li class="wy-breadcrumbs-aside">
       
     </li>
@@ -107,24 +101,28 @@
           <div role="main">
             <div class="section">
               
-                <h1 id="welcome-to-mkdocs">Welcome to MkDocs</h1>
-<p>For full documentation visit <a href="https://www.mkdocs.org">mkdocs.org</a>.</p>
-<h2 id="commands">Commands</h2>
+                <blockquote>
+<p>此文件负责说明 trajectory prediction 任务开放给用户自定义的一些参数</p>
+</blockquote>
+<h4 id="_1">参数传递方法</h4>
+<p>除 datasets 与 model_name 通过 parse_args.py 传递之外，其他的通过命令行请求用户输入，并支持回车使用默认值。</p>
+<h4 id="transfer">transfer 相关参数</h4>
 <ul>
-<li><code>mkdocs new [dir-name]</code> - Create a new project.</li>
-<li><code>mkdocs serve</code> - Start the live-reloading docs server.</li>
-<li><code>mkdocs build</code> - Build the documentation site.</li>
-<li><code>mkdocs -h</code> - Print help message and exit.</li>
+<li>min_session_len：轨迹最短长度。</li>
+<li>限制：不得小于 2。因为如果轨迹中只有一个点，是没有办法做预测的，即不存在下一跳。</li>
+<li>min_sessions：用户最少轨迹数量。</li>
+<li>限制：不得小于 2。如果一个用户轨迹数小于 2，就没有办法找到历史轨迹数据，会发生错误。</li>
+<li>time_length：轨迹间时间间隔。</li>
+<li>限制：需为 12 的整数倍，单位为小时。</li>
 </ul>
-<h2 id="project-layout">Project layout</h2>
-<pre><code>mkdocs.yml    # The configuration file.
-docs/
-    index.md  # The documentation homepage.
-    ...       # Other markdown pages, images and other files.
-</code></pre>
-<h2 id="about">About</h2>
-<pre><code>aaaa
-</code></pre>
+<h4 id="task">task 相关参数</h4>
+<ul>
+<li>model_name: 指定使用模型的名称。</li>
+<li>目前仅支持 SimpleRNN、DeepMove。</li>
+<li>datasets: 指定使用的数据集。</li>
+<li>目前支持 traj_foursquare、traj_gowalla。但是 traj_gowalla 存在性能问题，在数据 transfer 阶段会很慢。</li>
+<li>use_cuda: 是否使用 cuda。</li>
+</ul>
               
             </div>
           </div>
@@ -132,10 +130,10 @@ docs/
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="../traj_pred_args/" class="btn btn-neutral float-right" title="traj_pred">Next <span class="icon icon-circle-arrow-right"></span></a>
+        <a href="../user_shell/" class="btn btn-neutral float-right" title="User shell">Next <span class="icon icon-circle-arrow-right"></span></a>
       
       
-        <a href=".." class="btn btn-neutral" title="Home"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../about/" class="btn btn-neutral" title="About"><span class="icon icon-circle-arrow-left"></span> Previous</a>
       
     </div>
   
@@ -161,10 +159,10 @@ docs/
     <span class="rst-current-version" data-toggle="rst-current-version">
       
       
-        <span><a href=".." style="color: #fcfcfc;">&laquo; Previous</a></span>
+        <span><a href="../about/" style="color: #fcfcfc;">&laquo; Previous</a></span>
       
       
-        <span style="margin-left: 15px"><a href="../traj_pred_args/" style="color: #fcfcfc">Next &raquo;</a></span>
+        <span style="margin-left: 15px"><a href="../user_shell/" style="color: #fcfcfc">Next &raquo;</a></span>
       
     </span>
 </div>

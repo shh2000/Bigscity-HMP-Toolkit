@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  
+  
+  <link rel="shortcut icon" href="../img/favicon.ico">
+  <title>位置预测评估 - HMP package docs</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700|Roboto+Slab:400,700|Inconsolata:400,700" />
+
+  <link rel="stylesheet" href="../css/theme.css" />
+  <link rel="stylesheet" href="../css/theme_extra.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css" />
+  
+  <script>
+    // Current page data
+    var mkdocs_page_name = "\u4f4d\u7f6e\u9884\u6d4b\u8bc4\u4f30";
+    var mkdocs_page_input_path = "loc_pred_evaluate.md";
+    var mkdocs_page_url = null;
+  </script>
+  
+  <script src="../js/jquery-2.1.1.min.js" defer></script>
+  <script src="../js/modernizr-2.8.3.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
+  <script>hljs.initHighlightingOnLoad();</script> 
+  
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+        <a href=".." class="icon icon-home"> HMP package docs</a>
+        <div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="..">Home</a>
+                    </li>
+                </ul>
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../about/">About</a>
+                    </li>
+                </ul>
+                <ul>
+                    <li class="toctree-l1"><a class="" href="../deeomove_doc.md">Deepmove</a>
+                    </li>
+                </ul>
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../traj_pred_args/">traj_pred</a>
+                    </li>
+                </ul>
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../user_shell/">User shell</a>
+                    </li>
+                </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="..">HMP package docs</a>
+      </nav>
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="..">Docs</a> &raquo;</li>
+    
+      
+    
+    <li>位置预测评估</li>
+    <li class="wy-breadcrumbs-aside">
+      
+    </li>
+  </ul>
+  
+  <hr/>
+</div>
+          <div role="main">
+            <div class="section">
+              
+                <h1 id="_1">位置预测评估</h1>
+<h2 id="_2">文件组织格式</h2>
+<p>|-- evaluate -- loc_pred_evlauate_model.py 评估模型</p>
+<p>​                     -- loc_pred_evaluate_data.py  DataSet结构</p>
+<p>|-- docs -- loc_pred_evaluate.md                    位置预测评估任务的说明文档</p>
+<p>|-- tasks -- run_loc_pred_evaluate                  运行样例</p>
+<h2 id="_3">使用说明</h2>
+<h3 id="_4">调用方法</h3>
+<p>当需要进行位置预测评估时：</p>
+<ol>
+<li>引入 <code>/evaluate</code> 目录下的 <code>loc_pred_evaluate_model.py</code> 文件。</li>
+<li>创建 <code>LocationPredEvaluate</code> 类。</li>
+<li>调用 <code>run</code> 方法。</li>
+<li>可参考 <code>/tasks/run_loc_pred_evaluate.py</code> 文件。</li>
+</ol>
+<pre><code class="python">from evaluate import loc_pred_evaluate_model as lpem
+
+if __name__ == '__main__':
+    data = '{' \
+           '&quot;uid1&quot;: { ' \
+           '&quot;trace_id1&quot;:' \
+           '{ &quot;loc_true&quot;: [1], &quot;loc_pred&quot;: [[0.01, 0.91, 0.8]] }, ' \
+           '&quot;trace_id2&quot;:' \
+           '{ &quot;loc_true&quot;: [2], &quot;loc_pred&quot;: [[0.2, 0.13, 0.08]] } ' \
+           '},' \
+           '&quot;uid2&quot;: { ' \
+           '&quot;trace_id1&quot;:' \
+           '{ &quot;loc_true&quot;: [0], &quot;loc_pred&quot;: [[0.4, 0.5, 0.7]] }' \
+           '}' \
+           '}'
+    lpt = lpem.LocationPredEvaluate(data, &quot;DeepMove&quot;, &quot;ACC&quot;, 1, 2)
+    lpt.run()
+</code></pre>
+
+<h3 id="_5">参数含义</h3>
+<p>以 <code>lpt = lpem.LocationPredEvaluate(data, "DeepMove", "ACC", 1, 2)</code> 为例：</p>
+<p>data：满足位置预测评估任务的 json 格式的数据，用于评测。(必传)</p>
+<p>datatype：数据类型，若是 DeepMove 模型产生的数据，则此参数为 "DeepMove".（选传）</p>
+<p>mode：选择对该模型采用的评估方法，默认为 'ACC'，其他的评估方法可见该文档末尾。（选传）</p>
+<p>k：对应 top-k ACC 评估方法中的 k 参数，默认为1.（选传）</p>
+<p>len_pred：对每个真实位置预测产生的预测位置数量，对应输入数据中的 <code>loc_pred</code> 的列的个数，即 <code>loc_pred</code> 的每个列表元素的大小，默认为1.（选传）</p>
+<h2 id="_6">数据格式说明</h2>
+<p>附：关于位置的表示，参考DeepMove模型对所有的位置进行独热编码，每个位置具有一个编号。</p>
+<pre><code>{
+    uid1: {
+        trace_id1: {
+            loc_true: 一个list类型列表，列表中元素代表真实位置(编号)
+            loc_pred: 一个list类型列表，列表中的元素又是一个list类型列表，代表 [模型预测出的位置(编号)]。按照预测可能性的大小排列，最有可能的位置排在第1位；也可以是列表中元素代表 [模型预测出的位置(编号)的置信度]，比如DeepMove模型的输出。
+        },
+        trace_id2: {
+            ...
+        },
+        ...
+    },
+    uid2: {
+        ...
+    },
+    ...
+}
+</code></pre>
+
+<p>样例：</p>
+<pre><code>data = '{' \
+        '&quot;uid1&quot;: { ' \
+        '&quot;trace_id1&quot;:' \
+        '{ &quot;loc_true&quot;: [1], &quot;loc_pred&quot;: [[0.01, 0.91, 0.8]] }, ' \
+        '&quot;trace_id2&quot;:' \
+        '{ &quot;loc_true&quot;: [2], &quot;loc_pred&quot;: [[0.2, 0.13, 0.08]] } ' \
+        '},' \
+        '&quot;uid2&quot;: { ' \
+        '&quot;trace_id1&quot;:' \
+        '{ &quot;loc_true&quot;: [0], &quot;loc_pred&quot;: [[0.4, 0.5, 0.7]] }' \
+        '}' \
+        '}'
+</code></pre>
+
+<h2 id="_7">评估方法</h2>
+<p>mode：评估选项/指标</p>
+<ol>
+<li>ACC, 计算预测准确度（Accuracy）</li>
+<li>MSE：均方误差（Mean Square Error）</li>
+<li>MAE：平均绝对误差（Mean Absolute Error）</li>
+<li>RMSE：均方根误差（Root Mean Square Error）</li>
+<li>MAPE：平均绝对百分比误差（Mean Absolute Percentage Error）</li>
+<li>MARE：平均绝对和相对误差（Mean Absolute Relative Error）</li>
+<li>top-k：check whether the ground-truth location v appears in the top-k candidate locations，即真实位置在前k个预测位置中准确的准确度，若某个数据集上所有模型整体预测准确的偏低的情况，可采用top-5。</li>
+</ol>
+              
+            </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+    
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+      
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="versions">
+    <span class="rst-current-version" data-toggle="rst-current-version">
+      
+      
+      
+    </span>
+</div>
+    <script>var base_url = '..';</script>
+    <script src="../js/theme.js" defer></script>
+      <script src="../search/main.js" defer></script>
+    <script defer>
+        window.onload = function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        };
+    </script>
+
+</body>
+</html>
