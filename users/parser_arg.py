@@ -6,7 +6,7 @@ import os
 
 def run_model_on_dataset(model, dataset):
     if model == 'deepMove' and dataset == 'foursquare-tky':
-        os.system(r'cd ../tasks && python train_traj_prediction.py {} {}'.format(model, dataset))
+        os.system(r'cd ../tasks && python train_deepmove.py {} {}'.format(model, dataset))
         return True
     else:
         print('You want to run {} on {}, no this model or datasets!'.format(model, dataset))
@@ -14,8 +14,8 @@ def run_model_on_dataset(model, dataset):
 
 
 def evaluate_model_on_dataset(model, dataset, model_type):
-    if model == 'deepmove' and dataset == 'foursquare' and model_type == 'predict':
-        os.system(r'cd ../tasks && python evaluate_traj_prediction.py {} {}'.format(model, dataset))
+    if model == 'deepmove' and dataset == 'foursquare-tky' and model_type == 'predict':
+        os.system(r'cd ../tasks && python evaluate_deepmove.py {} {}'.format(model, dataset))
     else:
         print('You want to evaluate {}-type model {}, no this model!'.format(model, model_type))
 
