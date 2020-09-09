@@ -35,10 +35,13 @@ class DeepMoveDataset(Dataset):
                 # 当一用户 session 过少时会发生这个现象
                 continue
             sessions = data_neural[u]['sessions']
-            train_id = data_neural[u][mode]
+            if mode == 'all':
+                train_id = data_neural[u]['train'] + data_neural[u]['test']
+            else:
+                train_id = data_neural[u][mode]
             for c, i in enumerate(train_id):
                 trace = {}
-                if mode == 'train' and c == 0:
+                if mode == 'train' and c == 0 or mode == 'all' and c == 0:
                     continue
                 session = sessions[i]
                 if len(session) <= 1:
@@ -77,5 +80,6 @@ class DeepMoveDataset(Dataset):
                 trace['target_len'] = len(target)
                 trace['target'] = Variable(torch.LongTensor(target))  # target 会与 loc 有一段的重合，只有 target 的最后一位 loc 没有
                 trace['uid'] = Variable(torch.LongTensor([int(u)]))
+                trace['session_id'] = i
                 data.append(trace)
         return data  

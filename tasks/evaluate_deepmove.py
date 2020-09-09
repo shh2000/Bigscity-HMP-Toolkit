@@ -4,6 +4,7 @@ import time
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import json
 # import pickle
 # 将父目录加入 sys path TODO: 有没有更好的引用方式
 # sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -12,6 +13,8 @@ from model import TrajPreLocalAttnLong, SimpleRNN
 from data_transfer import gen_data
 from utils import RnnParameterData, generate_history, transferModelToMode
 from evaluate import loc_pred_evaluate_model as lpem
+from datasets import DeepMoveDataset
+from torch.utils.data import DataLoader
 
 # get model name and datasets from command line 
 if len(sys.argv) != 3:
@@ -22,86 +25,74 @@ datasets = sys.argv[2]
 model_mode = transferModelToMode(model_name)
 
 # get transfer parameters
-print('Please input transfer parameters. If you want to use default parameters, just enter.')
-
-min_session_len = input('min session len:')
-min_session_len = 5 if min_session_len == '' else min_session_len
-min_sessions = input('min sessions:')
-min_sessions = 2 if min_sessions == '' else min_sessions
-time_length = input('time length:')
-time_length = 72 if time_length == '' else time_length
-if min_session_len == 5 and min_sessions == 2 and time_length == 72:
-    data = gen_data(model_name, datasets)
-else:    
-    data = gen_data(model_name, datasets, min_session_len, min_sessions, time_length) # 不传上述三个参数时，将使用默认数值
+f = open('../config/deepmove_args.json', 'r')
+config = json.load(f)
+f.close()
+time_length = config['transfer']['time_length']
+data = gen_data(model_name, datasets, config['transfer']['min_session_len'], config['transfer']['min_sessions'], time_length)
 print('data loaded')
 data_neural = data['data_neural']
-
-# 使用 deepMove 源码数据集进行调试
-# picklefile=open('../data_extract/datasets/foursquare.pk','rb')
-# data=pickle.load(picklefile,encoding='iso-8859-1')
-# picklefile.close()
-# data_neural = data['data_neural']
-# data['loc_size'] = len(data['vid_list'])
-# data['uid_size'] = len(data['uid_list'])
-# TODO: generate_history 应该还需要修改一下
-data_train, train_idx = generate_history(data_neural, 'train') # TODO: 评估的话不需要分 train 与 test
-print('data len: ', len(data_train))
-# TODO:这里应该加载预训练好保存了的参数
-# 但目前就先这样吧, for test
-print('Please input model parameters. If you want to use default parameters, just enter.')
-use_cuda = input('use cuda(yes/no):')
-use_cuda = True if use_cuda == '' or use_cuda == 'yes' else False
+use_cuda = config['train']['use_cuda']
+test_dataset = DeepMoveDataset(data_neural, 'all', use_cuda)
 parameters = RnnParameterData(data=data, time_size=time_length, model_mode=model_mode, use_cuda = use_cuda)
+SAVE_PATH = '../model/save_model/'
 if model_name == 'deepMove':
     model = TrajPreLocalAttnLong(parameters=parameters).cuda() if use_cuda else TrajPreLocalAttnLong(parameters=parameters)
 else:
     model = SimpleRNN(parameters=parameters).cuda() if use_cuda else SimpleRNN(parameters=parameters)
+if os.path.exists(SAVE_PATH + model_name + '.m'):
+    model.load_state_dict(torch.load(SAVE_PATH + model_name + '.m'))
+    print('load model')
+else:
+    print('no pretrained model! please train the model.')
 model.train(False)
 
 print('start evaluate')
 evaluate_input = {}
-verbose = 100
-cnt = 1
-for user in data_train.keys():
-    evaluate_input[user] = {}
-    if cnt % verbose == 0:
-        print('start {} user: {}'.format(cnt, user))
-    for session_id in data_train[user].keys():
-        session = data_train[user][session_id]
-        if model_name == 'deepMove':
-            # 对于 TrajPreLocalAttnLong 是这个参数
-            if use_cuda:
-                loc = session['loc'].cuda()
-                tim = session['tim'].cuda()
-                target = session['target'].cuda()
-            else:
-                loc = session['loc']
-                tim = session['tim']
-                target = session['target']
-            # uid = Variable(torch.LongTensor([user]))
-            target_len = target.data.size()[0]
-            scores = model(loc, tim, target_len)
+batch_size = 4
+num_workers = 0
+total_batch = test_dataset.__len__() / batch_size
+verbose = 25
+
+# custom loader
+def collactor(batch):
+    loc = []
+    tim = []
+    history_loc = []
+    history_tim = []
+    history_count = []
+    uid = []
+    target = []
+    target_len = []
+    session_id = []
+    for item in batch:
+        loc.append(item['loc'])
+        tim.append(item['tim'])
+        history_loc.append(item['history_loc'])
+        history_tim.append(item['history_tim'])
+        history_count.append(item['history_count'])
+        uid.append(item['uid'])
+        target.append(item['target'])
+        target_len.append(item['target_len'])
+        session_id.append(item['session_id'])
+    return loc, tim, history_loc, history_tim, history_count, uid, target_len, target, session_id
+
+test_data_loader = DataLoader(dataset = test_dataset, batch_size = batch_size, num_workers = num_workers, collate_fn = collactor)
+cnt = 0
+if model_mode == 'attn_local_long':
+    for loc, tim, history_loc, history_tim, history_count, uid, target_len, target, session_id in test_data_loader:
+        for i in range(len(loc)):
+            scores = model(loc[i], tim[i], target_len[i])
             trace_input = {}
-            trace_input['loc_true'] = target.tolist()
+            trace_input['loc_true'] = target[i].tolist()
             trace_input['loc_pred'] = scores.tolist()
-            evaluate_input[user][session_id] = trace_input
-        elif model_name == 'simpleRNN':
-            if use_cuda:
-                loc = session['loc'].cuda()
-                tim = session['tim'].cuda()
-                target = session['target'].cuda()
-            else:
-                loc = session['loc']
-                tim = session['tim']
-                target = session['target']
-            scores = model(loc, tim)
-            scores = scores[-target.data.size()[0]:]
-            trace_input = {}
-            trace_input['loc_true'] = target.tolist()
-            trace_input['loc_pred'] = scores.tolist()
-            evaluate_input[user][session_id] = trace_input
-    cnt += 1
+            u = uid[i].item()
+            if u not in evaluate_input:
+                evaluate_input[u] = {}
+            evaluate_input[u][session_id[i]] = trace_input
+        cnt += 1
+        if cnt % verbose == 0:
+            print('finish batch {}/{}'.format(cnt, total_batch))
 
 lpt = lpem.LocationPredEvaluate(evaluate_input, 'DeepMove', 'ACC', 2, data['loc_size'])
 lpt.run()
