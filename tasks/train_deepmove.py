@@ -54,7 +54,7 @@ tmp_path = 'checkpoint/'
 os.mkdir(SAVE_PATH + tmp_path)
 print('start train')
 ## tran parameter
-batch_size = 10
+batch_size = 20
 verbose = 10
 num_workers = 0
 total_batch = train_dataset.__len__() / batch_size
