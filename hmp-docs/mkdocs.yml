@@ -2,4 +2,7 @@ site_name: HMP package docs
 nav:
     - Home: index.md
     - About: about.md
+    - Deepmove: deeomove_doc.md
+    - traj_pred: traj_pred_args.md
+    - User shell: user_shell.md
 theme: readthedocs
