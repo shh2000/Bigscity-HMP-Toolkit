@@ -6,3 +6,4 @@ __pycache__
 /data_extract/datasets/
 /data_transfer/datasets
 /model/save_model
+/hmp-docs/site/
