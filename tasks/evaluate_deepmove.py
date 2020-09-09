@@ -4,6 +4,7 @@ import time
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import json
 # import pickle
 # 将父目录加入 sys path TODO: 有没有更好的引用方式
 # sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -22,18 +23,11 @@ datasets = sys.argv[2]
 model_mode = transferModelToMode(model_name)
 
 # get transfer parameters
-print('Please input transfer parameters. If you want to use default parameters, just enter.')
-
-min_session_len = input('min session len:')
-min_session_len = 5 if min_session_len == '' else min_session_len
-min_sessions = input('min sessions:')
-min_sessions = 2 if min_sessions == '' else min_sessions
-time_length = input('time length:')
-time_length = 72 if time_length == '' else time_length
-if min_session_len == 5 and min_sessions == 2 and time_length == 72:
-    data = gen_data(model_name, datasets)
-else:    
-    data = gen_data(model_name, datasets, min_session_len, min_sessions, time_length) # 不传上述三个参数时，将使用默认数值
+f = open('../config/deepmove_args.json', 'r')
+config = json.load(f)
+f.close()
+time_length = config['transfer']['time_length']
+data = gen_data(model_name, datasets, config['transfer']['min_session_len'], config['transfer']['min_sessions'], time_length)
 print('data loaded')
 data_neural = data['data_neural']
 
@@ -49,9 +43,7 @@ data_train, train_idx = generate_history(data_neural, 'train') # TODO: 评估的
 print('data len: ', len(data_train))
 # TODO:这里应该加载预训练好保存了的参数
 # 但目前就先这样吧, for test
-print('Please input model parameters. If you want to use default parameters, just enter.')
-use_cuda = input('use cuda(yes/no):')
-use_cuda = True if use_cuda == '' or use_cuda == 'yes' else False
+use_cuda = config['train']['use_cuda']
 parameters = RnnParameterData(data=data, time_size=time_length, model_mode=model_mode, use_cuda = use_cuda)
 if model_name == 'deepMove':
     model = TrajPreLocalAttnLong(parameters=parameters).cuda() if use_cuda else TrajPreLocalAttnLong(parameters=parameters)
