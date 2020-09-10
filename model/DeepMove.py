@@ -25,16 +25,19 @@ class Attn(nn.Module):
             self.other = nn.Parameter(torch.FloatTensor(self.hidden_size))
 
     def forward(self, out_state, history):
-        seq_len = history.size()[0]
-        state_len = out_state.size()[0]
+        seq_len = history.size()[1]
+        state_len = out_state.size()[1]
+        batch_size = history.size()[0]
+        
         if self.use_cuda:
-            attn_energies = Variable(torch.zeros(state_len, seq_len)).cuda()
+            attn_energies = torch.zeros(batch_size, state_len, seq_len).cuda()
         else:
-            attn_energies = Variable(torch.zeros(state_len, seq_len))
+            attn_energies = torch.zeros(batch_size, state_len, seq_len)
         for i in range(state_len):
             for j in range(seq_len):
-                attn_energies[i, j] = self.score(out_state[i], history[j])
-        return F.softmax(attn_energies)
+                for k in range(batch_size):
+                    attn_energies[k, i, j] = self.score(out_state[k][i], history[k][j])
+        return F.softmax(attn_energies, dim = 2)
 
     def score(self, hidden, encoder_output):
         if self.method == 'dot':
@@ -206,10 +209,11 @@ class TrajPreLocalAttnLong(nn.Module):
             nn.init.constant(t, 0)
 
     def forward(self, loc, tim, target_len):
-        h1 = Variable(torch.zeros(1, 1, self.hidden_size))
-        h2 = Variable(torch.zeros(1, 1, self.hidden_size))
-        c1 = Variable(torch.zeros(1, 1, self.hidden_size))
-        c2 = Variable(torch.zeros(1, 1, self.hidden_size))
+        batch_size = loc.shape[0]
+        h1 = torch.zeros(1, batch_size, self.hidden_size)
+        h2 = torch.zeros(1, batch_size, self.hidden_size)
+        c1 = torch.zeros(1, batch_size, self.hidden_size)
+        c2 = torch.zeros(1, batch_size, self.hidden_size)
         if self.use_cuda:
             h1 = h1.cuda()
             h2 = h2.cuda()
@@ -218,7 +222,7 @@ class TrajPreLocalAttnLong(nn.Module):
 
         loc_emb = self.emb_loc(loc)
         tim_emb = self.emb_tim(tim)
-        x = torch.cat((loc_emb, tim_emb), 2)
+        x = torch.cat((loc_emb, tim_emb), 2).permute(1, 0, 2) # change batch * seq * input_size to seq * batch * input_size
         x = self.dropout(x)
 
         if self.rnn_type == 'GRU' or self.rnn_type == 'RNN':
@@ -228,14 +232,14 @@ class TrajPreLocalAttnLong(nn.Module):
             hidden_history, (h1, c1) = self.rnn_encoder(x[:-target_len], (h1, c1))
             hidden_state, (h2, c2) = self.rnn_decoder(x[-target_len:], (h2, c2))
 
-        hidden_history = hidden_history.squeeze(1)
-        hidden_state = hidden_state.squeeze(1)
-        attn_weights = self.attn(hidden_state, hidden_history).unsqueeze(0)
-        context = attn_weights.bmm(hidden_history.unsqueeze(0)).squeeze(0)
-        out = torch.cat((hidden_state, context), 1)  # no need for fc_attn
+        hidden_history = hidden_history.permute(1, 0, 2) # change history_len * batch_size * input_size to batch_size * history_len * input_size
+        hidden_state = hidden_state.permute(1, 0, 2)
+        attn_weights = self.attn(hidden_state, hidden_history) # batch_size * state_len * history_len
+        context = attn_weights.bmm(hidden_history) # batch_size * state_len * input_size
+        out = torch.cat((hidden_state, context), 2)  # batch_size * state_len * 2 x input_size
         out = self.dropout(out)
 
-        y = self.fc_final(out)
-        score = F.log_softmax(y)
+        y = self.fc_final(out) # batch_size * state_len * loc_size
+        score = F.log_softmax(y, dim=2) # batch_size * state_len * loc_size
 
         return score
