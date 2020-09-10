@@ -326,20 +326,17 @@ def generate_input_long_history(data_neural, mode, candidate=None):
     return data_train, train_idx
 
 
-def get_acc(target, scores):
+def get_acc(target, scores, topk = 1):
     """target and scores are torch cuda Variable"""
     target = target.data.cpu().numpy()
-    val, idxx = scores.data.topk(10, 1)
+    val, idxx = scores.data.topk(topk, 1)
     predx = idxx.cpu().numpy()
-    acc = np.zeros((3, 1))
+    correct_cnt = 0
     for i, p in enumerate(predx):
         t = target[i]
-        if t in p[:10] and t > 0:
-            acc[0] += 1
-        if t in p[:5] and t > 0:
-            acc[1] += 1
-        if t == p[0] and t > 0:
-            acc[2] += 1
+        if t in p:
+            correct_cnt += 1
+    acc = correct_cnt / target.shape[0]
     return acc
 
 def transferModelToMode(model_name):
@@ -352,30 +349,71 @@ def transferModelToMode(model_name):
         return 'default'
 
 
-def run(data_loader, model, optimizer, criterion, model_mode, lr, clip, batch_size, total_batch, verbose):
+def run(data_loader, model, target_len, use_cuda, optimizer, criterion, model_mode, lr, clip, total_batch, verbose):
     model.train(True)
     total_loss = []
     if model_mode == 'attn_local_long':
         cnt = 0
-        for loc, tim, history_loc, history_tim, history_count, uid, target_len, target in data_loader:
+        for loc, tim, history_loc, history_tim, history_count, uid, target in data_loader:
             # use accumulating gradients
             # one batch, one step
             optimizer.zero_grad()
-            for i in range(len(loc)):
-                scores = model(loc[i], tim[i], target_len[i])
-                loss = criterion(scores, target[i])
-                loss.backward()
-                total_loss.append(loss.data.cpu().numpy().tolist())
-                try:
-                    torch.nn.utils.clip_grad_norm(model.parameters(), clip)
-                    for p in model.parameters():
-                        if p.requires_grad:
-                            p.data.add_(-lr, p.grad.data)
-                except:
-                    pass
+            if use_cuda:
+                loc = torch.LongTensor(loc).cuda()
+                tim = torch.LongTensor(tim).cuda()
+                target = torch.LongTensor(target).cuda()
+            else:
+                loc = torch.LongTensor(loc)
+                tim = torch.LongTensor(tim)
+                target = torch.LongTensor(target)
+            scores = model(loc, tim, target_len) # batch_size * target_len * loc_size
+            # change to batch_size x target_len * loc_size
+            scores = scores.view(-1, scores.shape[2])
+            target = target.view(-1)
+            loss = criterion(scores, target)
+            loss.backward()
+            total_loss.append(loss.data.cpu().numpy().tolist())
+            try:
+                torch.nn.utils.clip_grad_norm(model.parameters(), clip)
+                for p in model.parameters():
+                    if p.requires_grad:
+                        p.data.add_(-lr, p.grad.data)
+            except:
+                pass
             optimizer.step()
             cnt += 1
             if cnt % verbose == 0:
                 print('finish batch {}/{}'.format(cnt, total_batch))
+                break
     avg_loss = np.mean(total_loss, dtype=np.float64)
     return model, avg_loss
+
+def evaluate(data_loader, model, target_len, use_cuda, model_mode, total_batch, verbose, criterion):
+    model.train(False)
+    total_loss = []
+    total_acc = []
+    if model_mode == 'attn_local_long':
+        cnt = 0
+        for loc, tim, history_loc, history_tim, history_count, uid, target in data_loader:
+            if use_cuda:
+                loc = torch.LongTensor(loc).cuda()
+                tim = torch.LongTensor(tim).cuda()
+                target = torch.LongTensor(target).cuda()
+            else:
+                loc = torch.LongTensor(loc)
+                tim = torch.LongTensor(tim)
+                target = torch.LongTensor(target)
+            scores = model(loc, tim, target_len) # batch_size * target_len * loc_size
+            scores = scores.view(-1, scores.shape[2])
+            target = target.view(-1)
+            loss = criterion(scores, target)
+            total_loss.append(loss.data.cpu().numpy().tolist())
+            acc = get_acc(target, scores)
+            total_acc.append(acc)
+            cnt += 1
+            if cnt % verbose == 0:
+                print('finish batch {}/{}'.format(cnt, total_batch))
+                break
+    avg_loss = np.mean(total_loss, dtype=np.float64)
+    avg_acc = np.mean(total_acc, dtype=np.float64)
+    return avg_loss, avg_acc
