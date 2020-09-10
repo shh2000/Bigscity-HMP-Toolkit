@@ -1,25 +1,30 @@
+import shutil
+
 from torch.utils.data import DataLoader
 import numpy as np
 import json
+import os
+import sys
 
 from evaluate import loc_pred_evaluate_data as lped
 
+sys.path.append('..')
+
 
 class LocationPredEvaluate(object):
-    def __init__(self, data, datatype='DeepMove', mode='ACC', k=1, len_pred=1):
+    def __init__(self, data, datatype='DeepMove', mode='ACC', k=1, len_pred=1, max_epoch=1, save_data=True):
         # 传入的数据参数以及评估参数
         self.data = data
         self.datatype = datatype
         self.mode = mode
         self.k = k
         self.len_pred = len_pred
-        self.init_data()
+        self.max_epoch = max_epoch
+        self.epoch = 0
+        self.base_dir = '..\\evaluate\\'
         # 保存的评估结果
-        self.evaluated = False
-        self.acc_list = []
-        self.loss_list = []
-        self.avg_acc = 0
-        self.avg_loss = 0
+        self.save_data = save_data
+        self.metrics = {'trace': [], 'acc': [], 'loss': []}
 
     def init_data(self):
         """
@@ -139,57 +144,69 @@ class LocationPredEvaluate(object):
             avg_acc = self.topk(np.array(loc_pred2, dtype=object), np.array(loc_true, dtype=object))
             if field == 'model':
                 print('---- 该模型在 top-{} ACC 评估方法下 avg_acc={:.3f} ----'.format(self.k, avg_acc))
-                self.avg_acc = avg_acc
+                self.metrics['acc'].append(avg_acc)
             else:
                 print('accuracy={:.3f}'.format(avg_acc))
-                self.acc_list.append(avg_acc)
+                self.metrics['trace'].append(avg_acc)
         elif self.mode == 'RMSE':
             avg_loss = self.RMSE(np.array(loc_pred2[0]), np.array(loc_true))
             if field == 'model':
                 print('---- 该模型在 RMSE 评估方法下 avg_loss={:.3f} ----'.format(avg_loss))
-                self.avg_loss = avg_loss
+                self.metrics['loss'].append(avg_loss)
             else:
                 print('RMSE avg_loss={:.3f}'.format(avg_loss))
-                self.loss_list.append(avg_loss)
+                self.metrics['trace'].append(avg_loss)
         elif self.mode == "MSE":
             avg_loss = self.MSE(np.array(loc_pred2[0]), np.array(loc_true))
             if field == 'model':
                 print('---- 该模型在 MSE 评估方法下 avg_loss={:.3f} ----'.format(avg_loss))
-                self.avg_loss = avg_loss
+                self.metrics['loss'].append(avg_loss)
             else:
                 print('MSE avg_loss={:.3f}'.format(avg_loss))
-                self.loss_list.append(avg_loss)
+                self.metrics['trace'].append(avg_loss)
         elif self.mode == "MAE":
             avg_loss = self.MAE(np.array(loc_pred2[0]), np.array(loc_true))
             if field == 'model':
                 print('---- 该模型在 MAE 评估方法下 avg_loss={:.3f} ----'.format(avg_loss))
-                self.avg_loss = avg_loss
+                self.metrics['loss'].append(avg_loss)
             else:
                 print('MAE avg_loss={:.3f}'.format(avg_loss))
-                self.loss_list.append(avg_loss)
+                self.metrics['trace'].append(avg_loss)
         elif self.mode == "MAPE":
             avg_loss = self.MAPE(np.array(loc_pred2[0]), np.array(loc_true))
             if field == 'model':
                 print('---- 该模型在 MAPE 评估方法下 avg_loss={:.3f} ----'.format(avg_loss))
-                self.avg_loss = avg_loss
+                self.metrics['loss'].append(avg_loss)
             else:
                 print('MAPE avg_loss={:.3f}'.format(avg_loss))
-                self.loss_list.append(avg_loss)
+                self.metrics['trace'].append(avg_loss)
         elif self.mode == "MARE":
             avg_loss = self.MARE(np.array(loc_pred2[0]), np.array(loc_true))
             if field == 'model':
                 print('---- 该模型在 MARE 评估方法下 avg_loss={:.3f} ----'.format(avg_loss))
-                self.avg_loss = avg_loss
+                self.metrics['loss'].append(avg_loss)
             else:
                 print('MARE avg_loss={:.3f}'.format(avg_loss))
-                self.loss_list.append(avg_loss)
+                self.metrics['trace'].append(avg_loss)
 
-    def run(self):
+    def run(self, data=None):
         """
         评估入口，根据评估类的参数做相应的评估
         :return:
         """
-        self.evaluated = True
+
+        self.epoch = self.epoch + 1
+        if data is not None:
+            self.data = data
+        self.init_data()
+        if self.save_data:
+            if self.epoch == 1 and os.path.exists(self.base_dir + 'temp_data\\' + self.datatype):
+                shutil.rmtree(self.base_dir + 'temp_data\\' + self.datatype)
+            if not os.path.exists(self.base_dir + 'temp_data\\' + self.datatype):
+                os.makedirs(self.base_dir + 'temp_data\\' + self.datatype)
+            file = open(self.base_dir + 'temp_data\\' + self.datatype + '\\data_' + str(self.epoch) + '.json', 'w')
+            file.write(json.dumps(self.data))
+            file.close()
         test_data_set = lped.LPEDataset(self.data)
         test_data_loader = DataLoader(dataset=test_data_set, batch_size=1, shuffle=True)
         # 用户轨迹列表
@@ -213,23 +230,33 @@ class LocationPredEvaluate(object):
                 print('trace_id {} : '.format(trace_id), end="")
                 self.run_evaluate(t_loc_pred, t_loc_true, 'trace')
         self.run_evaluate(loc_pred, loc_true, 'model')
+        if self.epoch == self.max_epoch:
+            if not os.path.exists(self.base_dir + 'res\\' + self.datatype):
+                os.makedirs(self.base_dir + 'res\\' + self.datatype)
+            file = open(self.base_dir + 'res\\' + self.datatype + '\\res.json', 'w')
+            file.write(json.dumps(self.metrics))
+            file.close()
 
     def get_acc(self):
-        assert self.evaluated, "还未对数据进行评估，请运行模型的run方法"
+        assert self.epoch > 0, "还未对数据进行评估，请运行模型的run方法"
+        assert self.epoch == self.max_epoch, "数据还没有评估完，请继续执行run方法"
         assert self.mode == "ACC", self.mode + "评估方法对应的指标为avg_loss"
-        return self.avg_acc
+        return self.metrics['acc']
 
     def get_loss(self):
-        assert self.evaluated, "还未对数据进行评估，请运行模型的run方法"
+        assert self.epoch > 0, "还未对数据进行评估，请运行模型的run方法"
+        assert self.epoch == self.max_epoch, "数据还没有评估完，请继续执行run方法"
         assert self.mode != "ACC", self.mode + "评估方法对应的指标为avg_acc"
-        return self.avg_loss
+        return self.metrics['loss']
 
     def get_acc_list(self):
-        assert self.evaluated, "还未对数据进行评估，请运行模型的run方法"
+        assert self.epoch > 0, "还未对数据进行评估，请运行模型的run方法"
+        assert self.epoch == self.max_epoch, "数据还没有评估完，请继续执行run方法"
         assert self.mode == "ACC", self.mode + "评估方法对应的指标为avg_loss"
-        return self.acc_list
+        return self.metrics['trace']
 
     def get_loss_list(self):
-        assert self.evaluated, "还未对数据进行评估，请运行模型的run方法"
+        assert self.epoch > 0, "还未对数据进行评估，请运行模型的run方法"
+        assert self.epoch == self.max_epoch, "数据还没有评估完，请继续执行run方法"
         assert self.mode != "ACC", self.mode + "评估方法对应的指标为avg_acc"
-        return self.loss_list
+        return self.metrics['trace']
