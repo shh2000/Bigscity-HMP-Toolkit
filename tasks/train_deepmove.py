@@ -65,7 +65,7 @@ tmp_path = 'checkpoint/'
 os.mkdir(SAVE_PATH + tmp_path)
 print('start train')
 ## tran parameter
-batch_size = 20
+batch_size = 50
 verbose = 10
 num_workers = 0
 metrics = {}
