@@ -384,7 +384,6 @@ def run(data_loader, model, target_len, use_cuda, optimizer, criterion, model_mo
             cnt += 1
             if cnt % verbose == 0:
                 print('finish batch {}/{}'.format(cnt, total_batch))
-                break
     avg_loss = np.mean(total_loss, dtype=np.float64)
     return model, avg_loss
 
@@ -413,7 +412,6 @@ def evaluate(data_loader, model, target_len, use_cuda, model_mode, total_batch, 
             cnt += 1
             if cnt % verbose == 0:
                 print('finish batch {}/{}'.format(cnt, total_batch))
-                break
     avg_loss = np.mean(total_loss, dtype=np.float64)
     avg_acc = np.mean(total_acc, dtype=np.float64)
     return avg_loss, avg_acc
