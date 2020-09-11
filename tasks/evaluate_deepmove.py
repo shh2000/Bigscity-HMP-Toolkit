@@ -1,6 +1,7 @@
 import sys,os
 import numpy as np
 import time
+import math
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -33,7 +34,16 @@ data = gen_data(model_name, datasets, config['transfer']['min_session_len'], con
 print('data loaded')
 data_neural = data['data_neural']
 use_cuda = config['train']['use_cuda']
-test_dataset = DeepMoveDataset(data_neural, 'all', use_cuda)
+# pad parameter
+loc_pad = data['loc_size']
+data['loc_size'] += 1
+tim_pad = time_length
+time_length += 1
+pad_len = config['transfer']['pad_len']
+history_len =  config['transfer']['history_len']
+target_len = pad_len - history_len
+test_dataset = DeepMoveDataset(data_neural, 'test', use_cuda, loc_pad, tim_pad, pad_len, history_len)
+
 parameters = RnnParameterData(data=data, time_size=time_length, model_mode=model_mode, use_cuda = use_cuda)
 SAVE_PATH = '../model/save_model/'
 if model_name == 'deepMove':
@@ -48,7 +58,6 @@ else:
 model.train(False)
 
 print('start evaluate')
-evaluate_input = {}
 batch_size = 4
 num_workers = 0
 total_batch = test_dataset.__len__() / batch_size
@@ -63,7 +72,6 @@ def collactor(batch):
     history_count = []
     uid = []
     target = []
-    target_len = []
     session_id = []
     for item in batch:
         loc.append(item['loc'])
@@ -73,26 +81,35 @@ def collactor(batch):
         history_count.append(item['history_count'])
         uid.append(item['uid'])
         target.append(item['target'])
-        target_len.append(item['target_len'])
         session_id.append(item['session_id'])
-    return loc, tim, history_loc, history_tim, history_count, uid, target_len, target, session_id
+    return loc, tim, history_loc, history_tim, history_count, uid, target, session_id
 
 test_data_loader = DataLoader(dataset = test_dataset, batch_size = batch_size, num_workers = num_workers, collate_fn = collactor)
 cnt = 0
+total_batch = math.ceil(test_dataset.__len__() / batch_size) 
+lpt = lpem.LocationPredEvaluate({}, 'DeepMove', 'ACC', 2, data['loc_size'], total_batch + 1) # TODO: 这里可以改一改
 if model_mode == 'attn_local_long':
-    for loc, tim, history_loc, history_tim, history_count, uid, target_len, target, session_id in test_data_loader:
-        for i in range(len(loc)):
-            scores = model(loc[i], tim[i], target_len[i])
+    for loc, tim, history_loc, history_tim, history_count, uid, target, session_id in test_data_loader:
+        if use_cuda:
+            loc = torch.LongTensor(loc).cuda()
+            tim = torch.LongTensor(tim).cuda()
+            target = torch.LongTensor(target).cuda()
+        else:
+            loc = torch.LongTensor(loc)
+            tim = torch.LongTensor(tim)
+            target = torch.LongTensor(target)
+        scores = model(loc, tim, target_len)
+        evaluate_input = {}
+        for i in range(len(uid)):
+            u = uid[i]
+            s = session_id[i]
             trace_input = {}
             trace_input['loc_true'] = target[i].tolist()
-            trace_input['loc_pred'] = scores.tolist()
-            u = uid[i].item()
+            trace_input['loc_pred'] = scores[i].tolist()
             if u not in evaluate_input:
                 evaluate_input[u] = {}
-            evaluate_input[u][session_id[i]] = trace_input
+            evaluate_input[u][s] = trace_input
+            lpt.run(evaluate_input)
         cnt += 1
         if cnt % verbose == 0:
             print('finish batch {}/{}'.format(cnt, total_batch))
-
-lpt = lpem.LocationPredEvaluate(evaluate_input, 'DeepMove', 'ACC', 2, data['loc_size'])
-lpt.run()
