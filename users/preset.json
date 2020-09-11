@@ -1,7 +1,8 @@
 {
   "models": {
     "predict": [
-      "deepMove"
+      "deepMove",
+      "simpleRNN"
     ],
     "plan": [
       "A*"
