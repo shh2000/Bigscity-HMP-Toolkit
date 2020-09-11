@@ -9,3 +9,5 @@ __pycache__
 /hmp-docs/site/
 /evaluate/temp_data
 /evaluate/res
+/gui
+paper.md
