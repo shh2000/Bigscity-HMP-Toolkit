@@ -48,7 +48,7 @@ parameters = RnnParameterData(data=data, time_size=time_length, model_mode=model
 SAVE_PATH = '../model/save_model/'
 if model_name == 'deepMove':
     model = TrajPreLocalAttnLong(parameters=parameters).cuda() if use_cuda else TrajPreLocalAttnLong(parameters=parameters)
-else:
+elif model_name == 'simpleRNN':
     model = SimpleRNN(parameters=parameters).cuda() if use_cuda else SimpleRNN(parameters=parameters)
 if os.path.exists(SAVE_PATH + model_name + '.m'):
     model.load_state_dict(torch.load(SAVE_PATH + model_name + '.m'))
@@ -88,28 +88,31 @@ test_data_loader = DataLoader(dataset = test_dataset, batch_size = batch_size, n
 cnt = 0
 total_batch = math.ceil(test_dataset.__len__() / batch_size) 
 lpt = lpem.LocationPredEvaluate({}, 'DeepMove', 'ACC', 2, data['loc_size'], total_batch + 1) # TODO: 这里可以改一改
-if model_mode == 'attn_local_long':
-    for loc, tim, history_loc, history_tim, history_count, uid, target, session_id in test_data_loader:
-        if use_cuda:
-            loc = torch.LongTensor(loc).cuda()
-            tim = torch.LongTensor(tim).cuda()
-            target = torch.LongTensor(target).cuda()
-        else:
-            loc = torch.LongTensor(loc)
-            tim = torch.LongTensor(tim)
-            target = torch.LongTensor(target)
+for loc, tim, history_loc, history_tim, history_count, uid, target, session_id in test_data_loader:
+    if use_cuda:
+        loc = torch.LongTensor(loc).cuda()
+        tim = torch.LongTensor(tim).cuda()
+        target = torch.LongTensor(target).cuda()
+    else:
+        loc = torch.LongTensor(loc)
+        tim = torch.LongTensor(tim)
+        target = torch.LongTensor(target)
+    if model_mode == 'attn_local_long':
         scores = model(loc, tim, target_len)
-        evaluate_input = {}
-        for i in range(len(uid)):
-            u = uid[i]
-            s = session_id[i]
-            trace_input = {}
-            trace_input['loc_true'] = target[i].tolist()
-            trace_input['loc_pred'] = scores[i].tolist()
-            if u not in evaluate_input:
-                evaluate_input[u] = {}
-            evaluate_input[u][s] = trace_input
-            lpt.run(evaluate_input)
-        cnt += 1
-        if cnt % verbose == 0:
-            print('finish batch {}/{}'.format(cnt, total_batch))
+    elif model_mode == 'simple':
+        scores = model(loc, tim)
+        scores = scores[:, -target_len:, :]
+    evaluate_input = {}
+    for i in range(len(uid)):
+        u = uid[i]
+        s = session_id[i]
+        trace_input = {}
+        trace_input['loc_true'] = target[i].tolist()
+        trace_input['loc_pred'] = scores[i].tolist()
+        if u not in evaluate_input:
+            evaluate_input[u] = {}
+        evaluate_input[u][s] = trace_input
+        lpt.run(evaluate_input)
+    cnt += 1
+    if cnt % verbose == 0:
+        print('finish batch {}/{}'.format(cnt, total_batch))
