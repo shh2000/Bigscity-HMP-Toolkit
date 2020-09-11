@@ -143,10 +143,10 @@ class LocationPredEvaluate(object):
         if self.mode == 'ACC':
             avg_acc = self.topk(np.array(loc_pred2, dtype=object), np.array(loc_true, dtype=object))
             if field == 'model':
-                print('---- 该模型在 top-{} ACC 评估方法下 avg_acc={:.3f} ----'.format(self.k, avg_acc))
+                # print('---- 该模型在 top-{} ACC 评估方法下 avg_acc={:.3f} ----'.format(self.k, avg_acc))
                 self.metrics['acc'].append(avg_acc)
             else:
-                print('accuracy={:.3f}'.format(avg_acc))
+                # print('accuracy={:.3f}'.format(avg_acc))
                 self.metrics['trace'].append(avg_acc)
         elif self.mode == 'RMSE':
             avg_loss = self.RMSE(np.array(loc_pred2[0]), np.array(loc_true))
@@ -219,7 +219,7 @@ class LocationPredEvaluate(object):
         loc_pred = []
         for user_id in user_list.keys():
             user = user_list[user_id]
-            print('-------------- user_id {} --------------'.format(user_id))
+            # print('-------------- user_id {} --------------'.format(user_id))
             trace_ids = user.keys()
             for trace_id in trace_ids:
                 trace = user[trace_id]
@@ -227,7 +227,7 @@ class LocationPredEvaluate(object):
                 t_loc_pred = trace['loc_pred']
                 loc_true.extend(t_loc_true)
                 loc_pred.extend(t_loc_pred)
-                print('trace_id {} : '.format(trace_id), end="")
+                # print('trace_id {} : '.format(trace_id), end="")
                 self.run_evaluate(t_loc_pred, t_loc_true, 'trace')
         self.run_evaluate(loc_pred, loc_true, 'model')
         if self.epoch == self.max_epoch:

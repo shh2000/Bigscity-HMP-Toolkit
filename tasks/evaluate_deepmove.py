@@ -58,10 +58,10 @@ else:
 model.train(False)
 
 print('start evaluate')
-batch_size = 4
+batch_size = 100
 num_workers = 0
 total_batch = test_dataset.__len__() / batch_size
-verbose = 25
+verbose = 10
 
 # custom loader
 def collactor(batch):

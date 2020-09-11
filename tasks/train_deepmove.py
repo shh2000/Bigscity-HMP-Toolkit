@@ -9,7 +9,7 @@ import json
 # 将父目录加入 sys path TODO: 有没有更好的引用方式
 # sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.append('..')
-from model import TrajPreLocalAttnLong
+from model import TrajPreLocalAttnLong, SimpleRNN
 from data_transfer import gen_data
 from utils import RnnParameterData, run, generate_history, transferModelToMode, evaluate
 from datasets import DeepMoveDataset
@@ -18,14 +18,14 @@ from datasets import DeepMoveDataset
 if len(sys.argv) != 3:
     print('wrong format parameters!', file=sys.stderr)
     exit(1)
-model_name = sys.argv[1] # deepMove / SimpleRNN
+model_name = sys.argv[1] # deepMove / simpleRNN
 datasets = sys.argv[2]
-# model_name = 'deepMove'
+# model_name = 'simpleRNN'
 # datasets = 'foursquare-tky'
 model_mode = transferModelToMode(model_name)
 
 # read config from ../config/deepmove_args.json
-f = open('../config/deepmove_args.json', 'r')
+f = open('../config/{}_args.json'.format(model_name), 'r')
 config = json.load(f)
 f.close()
 time_length = config['transfer']['time_length']
@@ -44,11 +44,14 @@ history_len =  config['transfer']['history_len']
 target_len = pad_len - history_len
 parameters = RnnParameterData(data=data, time_size=time_length, model_mode=model_mode, use_cuda = use_cuda)
 
+if model_name == 'deepMove':
+    model = TrajPreLocalAttnLong(parameters=parameters).cuda() if use_cuda else TrajPreLocalAttnLong(parameters=parameters)
+elif model_name == 'simpleRNN':
+    model = SimpleRNN(parameters).cuda() if use_cuda else SimpleRNN(parameters)
+
 if use_cuda:
-    model = TrajPreLocalAttnLong(parameters=parameters).cuda()
     criterion = nn.NLLLoss().cuda()
 else:
-    model = TrajPreLocalAttnLong(parameters=parameters)
     criterion = nn.NLLLoss()
 
 optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=parameters.lr,
@@ -65,7 +68,7 @@ tmp_path = 'checkpoint/'
 os.mkdir(SAVE_PATH + tmp_path)
 print('start train')
 ## tran parameter
-batch_size = 50
+batch_size = 100
 verbose = 10
 num_workers = 0
 metrics = {}

@@ -53,25 +53,27 @@ class SimpleRNN(nn.Module):
             nn.init.constant(t, 0)
 
     def forward(self, loc, tim):
-        h1 = Variable(torch.zeros(1, 1, self.hidden_size))
-        c1 = Variable(torch.zeros(1, 1, self.hidden_size))
+        batch_size = loc.shape[0]
+        h1 = torch.zeros(1, batch_size, self.hidden_size)
+        c1 = torch.zeros(1, batch_size, self.hidden_size)
         if self.use_cuda:
             h1 = h1.cuda()
             c1 = c1.cuda()
 
         loc_emb = self.emb_loc(loc)
         tim_emb = self.emb_tim(tim)
-        x = torch.cat((loc_emb, tim_emb), 2)
+        x = torch.cat((loc_emb, tim_emb), 2).permute(1, 0, 2) # change batch * seq * input_size to seq * batch * input_size
         x = self.dropout(x)
 
         if self.rnn_type == 'GRU' or self.rnn_type == 'RNN':
             out, h1 = self.rnn(x, h1)
         elif self.rnn_type == 'LSTM':
             out, (h1, c1) = self.rnn(x, (h1, c1))
-        out = out.squeeze(1)
+        # out = out.squeeze(1)
+        out = out.permute(1, 0, 2)
         out = F.selu(out)
         out = self.dropout(out)
 
         y = self.fc(out)
-        score = F.log_softmax(y)  # calculate loss by NLLoss
+        score = F.log_softmax(y, dim=2)  # calculate loss by NLLoss
         return score
